@@ -1,83 +1,136 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:jobswipe/app/theme/app_colors.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jobswipe/shared/providers/auth_provider.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
+  ConsumerState<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends ConsumerState<LoginPage> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  InputDecoration _inputDecoration({
+    required String hintText,
+    required IconData icon,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      hintText: hintText,
+      prefixIcon: Icon(icon),
+      suffixIcon: suffixIcon,
+      filled: true,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide.none,
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
+    final authNotifier = ref.read(authProvider.notifier);
 
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Spacer(),
-              const Text(
-                'Connexion',
-                style: TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w800,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 28),
+                const Text(
+                  'Connexion',
+                  style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold),
                 ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Connecte-toi à JobSwipe pour découvrir ou publier des opportunités.',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 15,
-                ),
-              ),
-              const SizedBox(height: 32),
-              TextField(
-                controller: emailController,
-                decoration: const InputDecoration(
-                  hintText: 'Email',
-                  prefixIcon: Icon(Icons.mail_outline),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  hintText: 'Mot de passe',
-                  prefixIcon: Icon(Icons.lock_outline),
-                ),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => context.go('/feed'),
-                child: const Text(
-                  'Connexion en tant que candidat',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () => context.go('/company-dashboard'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(54),
-                  side: const BorderSide(color: AppColors.primaryLight),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: const Text(
-                  'Accès entreprise',
+                const SizedBox(height: 12),
+                Text(
+                  'Connecte-toi à JobSwipe pour découvrir ou publier des opportunités.',
                   style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    color: Colors.white.withValues(alpha: 0.72),
                   ),
                 ),
-              ),
-              const Spacer(),
-            ],
+                const SizedBox(height: 32),
+                TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: _inputDecoration(
+                    hintText: 'Email',
+                    icon: Icons.mail_outline,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: _inputDecoration(
+                    hintText: 'Mot de passe',
+                    icon: Icons.lock_outline,
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity,
+                  height: 58,
+                  child: ElevatedButton(
+                    onPressed: authNotifier.loginAsCandidate,
+                    child: const Text('Connexion en tant que candidat'),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  height: 58,
+                  child: OutlinedButton(
+                    onPressed: authNotifier.loginAsPendingCompany,
+                    child: const Text('Accès entreprise'),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  height: 58,
+                  child: OutlinedButton(
+                    onPressed: authNotifier.loginAsVerifiedCompany,
+                    child: const Text('Test entreprise vérifiée'),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  height: 58,
+                  child: TextButton(
+                    onPressed: authNotifier.loginAsAdmin,
+                    child: const Text('Test accès admin'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

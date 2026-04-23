@@ -1,159 +1,201 @@
 import 'package:flutter/material.dart';
-import 'package:jobswipe/app/theme/app_colors.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jobswipe/core/enums/verification_status.dart';
+import 'package:jobswipe/shared/providers/auth_provider.dart';
 
-class CompanyDashboardPage extends StatelessWidget {
+class CompanyDashboardPage extends ConsumerWidget {
   const CompanyDashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    const bool isVerified = false;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authProvider);
+    final authNotifier = ref.read(authProvider.notifier);
+
+    final isVerified = user.isVerifiedCompany;
+    final verificationStatus = user.verificationStatus;
+
+    String statusText;
+    Color statusColor;
+    IconData statusIcon;
+
+    switch (verificationStatus) {
+      case VerificationStatus.approved:
+        statusText = 'Entreprise vérifiée';
+        statusColor = Colors.greenAccent;
+        statusIcon = Icons.verified;
+        break;
+      case VerificationStatus.rejected:
+        statusText = 'Validation refusée';
+        statusColor = Colors.redAccent;
+        statusIcon = Icons.cancel_outlined;
+        break;
+      case VerificationStatus.pending:
+      default:
+        statusText = 'Validation en attente';
+        statusColor = Colors.amber;
+        statusIcon = Icons.watch_later_outlined;
+        break;
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Espace Entreprise',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
+        title: const Text('Espace Entreprise'),
+        actions: [
+          IconButton(
+            onPressed: authNotifier.logout,
+            icon: const Icon(Icons.logout),
+          ),
+        ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(22),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: const Color(0xFF161D2E),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: Colors.blueAccent,
+                    child: const Icon(Icons.business, color: Colors.white),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user.displayName,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(statusIcon, color: statusColor, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              statusText,
+                              style: TextStyle(
+                                color: statusColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Row(
+            const SizedBox(height: 22),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1B2337),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: isVerified ? Colors.greenAccent : Colors.amber,
+                  width: 0.6,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Statut de vérification',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    isVerified
+                        ? 'Votre entreprise a été validée par l’administrateur. Vous pouvez désormais publier vos offres d’emploi.'
+                        : 'Votre entreprise doit être validée par un administrateur après vérification de son existence légale et signature du contrat. Tant que cette validation n’est pas effectuée, la publication d’offres reste désactivée.',
+                    style: TextStyle(
+                      fontSize: 16,
+                      height: 1.5,
+                      color: Colors.white.withValues(alpha: 0.75),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              height: 58,
+              child: ElevatedButton.icon(
+                onPressed: isVerified
+                    ? () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Accès autorisé à la création d’offre',
+                            ),
+                          ),
+                        );
+                      }
+                    : null,
+                icon: const Icon(Icons.add_business_outlined),
+                label: const Text('Ajouter une offre'),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (!isVerified)
+              const Text(
+                'Action indisponible : votre compte entreprise est en cours de validation par l’administrateur.',
+                style: TextStyle(
+                  color: Colors.amber,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            if (isVerified)
+              const Text(
+                'Votre entreprise est validée. Vous pouvez publier vos offres.',
+                style: TextStyle(
+                  color: Colors.greenAccent,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            const SizedBox(height: 28),
+            const Text(
+              'Aperçu dashboard',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 18),
+            Row(
               children: [
-                const CircleAvatar(
-                  radius: 28,
-                  backgroundColor: AppColors.primary,
-                  child: Icon(Icons.business, color: Colors.white),
+                Expanded(
+                  child: _StatCard(
+                    title: 'Offres',
+                    value: isVerified ? '4' : '0',
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'TechVision Morocco',
-                        style: TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            isVerified ? Icons.verified : Icons.schedule,
-                            size: 18,
-                            color: isVerified
-                                ? AppColors.primaryLight
-                                : AppColors.warning,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            isVerified
-                                ? 'Entreprise vérifiée'
-                                : 'Validation en attente',
-                            style: TextStyle(
-                              color: isVerified
-                                  ? AppColors.primaryLight
-                                  : AppColors.warning,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                  child: _StatCard(
+                    title: 'Candidatures',
+                    value: isVerified ? '18' : '0',
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: AppColors.surface2,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: AppColors.warning.withValues(alpha: 0.25),
-              ),
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Statut de vérification',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  'Votre entreprise doit être validée par un administrateur après vérification de son existence légale et signature du contrat. Tant que cette validation n’est pas effectuée, la publication d’offres reste désactivée.',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: isVerified ? () {} : null,
-            icon: const Icon(Icons.add_business),
-            label: const Text(
-              'Ajouter une offre',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-          const SizedBox(height: 14),
-          if (!isVerified)
-            const Text(
-              'Action indisponible : votre compte entreprise est en cours de validation par l’administrateur.',
-              style: TextStyle(
-                color: AppColors.warning,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          const SizedBox(height: 28),
-          const Text(
-            'Aperçu dashboard',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: const [
-              Expanded(
-                child: _StatCard(
-                  title: 'Offres',
-                  value: '0',
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: _StatCard(
-                  title: 'Candidatures',
-                  value: '0',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const _StatCard(
-            title: 'Vues totales',
-            value: '0',
-          ),
-        ],
+            const SizedBox(height: 14),
+            _StatCard(title: 'Vues totales', value: isVerified ? '1 284' : '0'),
+          ],
+        ),
       ),
     );
   }
@@ -163,30 +205,30 @@ class _StatCard extends StatelessWidget {
   final String title;
   final String value;
 
-  const _StatCard({
-    required this.title,
-    required this.value,
-  });
+  const _StatCard({required this.title, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFF121A2B),
+        borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: AppColors.textSecondary)),
-          const SizedBox(height: 8),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.white.withValues(alpha: 0.72),
+            ),
+          ),
+          const SizedBox(height: 14),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-            ),
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
           ),
         ],
       ),

@@ -1,162 +1,124 @@
 import 'package:flutter/material.dart';
-import 'package:jobswipe/app/theme/app_colors.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jobswipe/shared/providers/auth_provider.dart';
 
-class FeedPage extends StatelessWidget {
+class FeedPage extends ConsumerWidget {
   const FeedPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final jobs = [
-      {
-        'title': 'Développeur Flutter',
-        'company': 'TechVision',
-        'location': 'Casablanca',
-        'contract': 'CDI',
-        'experience': '2 ans exp.',
-        'salary': '18 000 - 24 000 MAD',
-      },
-      {
-        'title': 'Ingénieur Réseau',
-        'company': 'NetSecure Maroc',
-        'location': 'Rabat',
-        'contract': 'CDI',
-        'experience': '3 ans exp.',
-        'salary': '20 000 - 28 000 MAD',
-      },
-      {
-        'title': 'UI/UX Designer',
-        'company': 'CreativeLab',
-        'location': 'Marrakech',
-        'contract': 'Freelance',
-        'experience': '1 an exp.',
-        'salary': 'Selon profil',
-      },
-    ];
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authNotifier = ref.read(authProvider.notifier);
 
     return Scaffold(
-      body: PageView.builder(
-        scrollDirection: Axis.vertical,
-        itemCount: jobs.length,
-        itemBuilder: (context, index) {
-          final job = jobs[index];
-
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.black,
-                      Colors.blueGrey.shade900,
-                      Colors.black87,
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+      appBar: AppBar(
+        title: const Text('JobSwipe'),
+        actions: [
+          IconButton(
+            onPressed: authNotifier.logout,
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 0,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Accueil'),
+          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Recherche'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add_circle),
+            label: 'Publier',
+          ),
+          BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Messages'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+        ],
+      ),
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF020617), Color(0xFF0B1220)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'JobSwipe',
+                    style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold),
                   ),
-                ),
-              ),
-              Positioned(
-                top: 60,
-                left: 20,
-                child: Text(
-                  'JobSwipe',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                ),
-              ),
-              Positioned(
-                right: 16,
-                bottom: 170,
-                child: Column(
-                  children: const [
-                    _ActionButton(
-                      icon: Icons.favorite,
-                      label: '23.5K',
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(28),
                     ),
-                    SizedBox(height: 20),
-                    _ActionButton(
-                      icon: Icons.bookmark_border,
-                      label: '1.1K',
-                    ),
-                    SizedBox(height: 20),
-                    _ActionButton(
-                      icon: Icons.send,
-                      label: '212',
-                    ),
-                  ],
-                ),
-              ),
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: 28,
-                child: Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        job['title']!,
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '${job['company']} • ${job['location']}',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          _Tag(text: job['contract']!),
-                          _Tag(text: job['experience']!),
-                          _Tag(text: job['salary']!),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {},
-                          child: const Text(
-                            'Postuler',
-                            style: TextStyle(fontWeight: FontWeight.w700),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Développeur Flutter',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 10),
+                        Text(
+                          'TechVision • Casablanca',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.white.withValues(alpha: 0.75),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            _ChipLabel(label: 'CDI'),
+                            _ChipLabel(label: '2 ans exp.'),
+                            _ChipLabel(label: '18 000 - 24 000 MAD'),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: ElevatedButton(
+                            onPressed: () {},
+                            child: const Text('Postuler'),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                ],
               ),
-            ],
-          );
-        },
-      ),
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: const Color(0xFF0E121A),
-        selectedIndex: 0,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home), label: 'Accueil'),
-          NavigationDestination(icon: Icon(Icons.search), label: 'Recherche'),
-          NavigationDestination(icon: Icon(Icons.add_circle), label: 'Publier'),
-          NavigationDestination(icon: Icon(Icons.message), label: 'Messages'),
-          NavigationDestination(icon: Icon(Icons.person), label: 'Profil'),
+            ),
+          ),
+          Positioned(
+            right: 12,
+            top: 150,
+            child: Column(
+              children: const [
+                _ActionButton(icon: Icons.favorite, value: '23.5K'),
+                SizedBox(height: 14),
+                _ActionButton(icon: Icons.bookmark_border, value: '1.1K'),
+                SizedBox(height: 14),
+                _ActionButton(icon: Icons.send, value: '212'),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -165,49 +127,44 @@ class FeedPage extends StatelessWidget {
 
 class _ActionButton extends StatelessWidget {
   final IconData icon;
-  final String label;
+  final String value;
 
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-  });
+  const _ActionButton({required this.icon, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         CircleAvatar(
-          radius: 24,
+          radius: 30,
           backgroundColor: Colors.black.withValues(alpha: 0.35),
-          child: Icon(icon, color: Colors.white),
+          child: Icon(icon, color: Colors.white, size: 28),
         ),
-        const SizedBox(height: 6),
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
       ],
     );
   }
 }
 
-class _Tag extends StatelessWidget {
-  final String text;
+class _ChipLabel extends StatelessWidget {
+  final String label;
 
-  const _Tag({required this.text});
+  const _ChipLabel({required this.label});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.30),
-        ),
+        color: const Color(0xFF0F2A52),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.6)),
       ),
-      child: Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
+      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
     );
   }
 }
