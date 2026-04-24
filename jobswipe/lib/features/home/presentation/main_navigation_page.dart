@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jobswipe/core/enums/user_role.dart';
 import 'package:jobswipe/features/feed/presentation/feed_page.dart';
 import 'package:jobswipe/shared/providers/auth_provider.dart';
+import 'package:jobswipe/features/company/presentation/create_job_page.dart';
 
 class MainNavigationPage extends ConsumerStatefulWidget {
   const MainNavigationPage({super.key});
@@ -79,6 +80,11 @@ class _MainNavigationPageState extends ConsumerState<MainNavigationPage> {
         );
         return;
       }
+
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (context) => const CreateJobPage()));
+      return;
     }
 
     setState(() {

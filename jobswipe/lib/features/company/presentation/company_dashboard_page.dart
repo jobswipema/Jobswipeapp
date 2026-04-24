@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jobswipe/core/enums/verification_status.dart';
 import 'package:jobswipe/shared/providers/auth_provider.dart';
+import 'package:jobswipe/features/company/presentation/create_job_page.dart';
 
 class CompanyDashboardPage extends ConsumerWidget {
   const CompanyDashboardPage({super.key});
@@ -137,11 +138,9 @@ class CompanyDashboardPage extends ConsumerWidget {
               child: ElevatedButton.icon(
                 onPressed: isVerified
                     ? () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Accès autorisé à la création d’offre',
-                            ),
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const CreateJobPage(),
                           ),
                         );
                       }
