@@ -4,7 +4,7 @@ import 'package:jobswipe/core/enums/user_role.dart';
 import 'package:jobswipe/features/admin/presentation/admin_dashboard_page.dart';
 import 'package:jobswipe/features/auth/presentation/login_page.dart';
 import 'package:jobswipe/features/company/presentation/company_dashboard_page.dart';
-import 'package:jobswipe/features/feed/presentation/feed_page.dart';
+import 'package:jobswipe/features/home/presentation/main_navigation_page.dart';
 import 'package:jobswipe/features/splash/presentation/splash_page.dart';
 import 'package:jobswipe/shared/providers/auth_provider.dart';
 
@@ -41,7 +41,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/', builder: (context, state) => const SplashPage()),
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
-      GoRoute(path: '/feed', builder: (context, state) => const FeedPage()),
+      GoRoute(
+        path: '/feed',
+        builder: (context, state) => const MainNavigationPage(),
+      ),
       GoRoute(
         path: '/company',
         builder: (context, state) => const CompanyDashboardPage(),
