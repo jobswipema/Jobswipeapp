@@ -1,0 +1,126 @@
+{
+  "project_info": {
+    "project_number": "697301321773",
+    "project_id": "jobswipe-e3e3e",
+    "storage_bucket": "jobswipe-e3e3e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:697301321773:android:0fec08dd969b9e5520d0a4",
+        "android_client_info": {
+          "package_name": "com.example.jobswipe"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "697301321773-naevbfse60q6aaptjomhiv6rht4mv123.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4IlJMJXRL1xfNGK-bB9B8xgjuqv-3nL0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "697301321773-naevbfse60q6aaptjomhiv6rht4mv123.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "697301321773-rulfo2agq6dg80182cklhit7vmunucbh.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.jobswipe"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:697301321773:android:b55c449c00d5f7e220d0a4",
+        "android_client_info": {
+          "package_name": "com.jobswipe.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "697301321773-13ltm5os7s92nv7pavhfqbsmg85go0id.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.jobswipe.app",
+            "certificate_hash": "124842882f169ef0ec6db696b42aa85296e2eb49"
+          }
+        },
+        {
+          "client_id": "697301321773-naevbfse60q6aaptjomhiv6rht4mv123.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4IlJMJXRL1xfNGK-bB9B8xgjuqv-3nL0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "697301321773-naevbfse60q6aaptjomhiv6rht4mv123.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "697301321773-rulfo2agq6dg80182cklhit7vmunucbh.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.jobswipe"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:697301321773:android:7b120c708d4154a220d0a4",
+        "android_client_info": {
+          "package_name": "com.jobswipe.jobs"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "697301321773-naevbfse60q6aaptjomhiv6rht4mv123.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4IlJMJXRL1xfNGK-bB9B8xgjuqv-3nL0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "697301321773-naevbfse60q6aaptjomhiv6rht4mv123.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "697301321773-rulfo2agq6dg80182cklhit7vmunucbh.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.jobswipe"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -12,7 +12,9 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -31,11 +33,38 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       prefixIcon: Icon(icon),
       suffixIcon: suffixIcon,
       filled: true,
+      fillColor: const Color(0xFF1A2235),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
         borderSide: BorderSide.none,
       ),
     );
+  }
+
+  Future<void> _handleLogin() async {
+    final authNotifier = ref.read(authProvider.notifier);
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Veuillez remplir tous les champs')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await authNotifier.loginWithEmail(email, password);
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -51,19 +80,25 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 28),
+
                 const Text(
                   'Connexion',
                   style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold),
                 ),
+
                 const SizedBox(height: 12),
+
                 Text(
                   'Connecte-toi à JobSwipe pour découvrir ou publier des opportunités.',
                   style: TextStyle(
                     fontSize: 18,
-                    color: Colors.white.withValues(alpha: 0.72),
+                    color: Colors.white.withOpacity(0.72),
                   ),
                 ),
+
                 const SizedBox(height: 32),
+
+                /// EMAIL
                 TextField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -72,7 +107,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     icon: Icons.mail_outline,
                   ),
                 ),
+
                 const SizedBox(height: 18),
+
+                /// PASSWORD
                 TextField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
@@ -93,40 +131,67 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 28),
+
+                /// 🔥 LOGIN FIREBASE
                 SizedBox(
                   width: double.infinity,
                   height: 58,
                   child: ElevatedButton(
-                    onPressed: authNotifier.loginAsCandidate,
-                    child: const Text('Connexion en tant que candidat'),
+                    onPressed: _isLoading ? null : _handleLogin,
+                    child: _isLoading
+                        ? const CircularProgressIndicator()
+                        : const Text('Connexion'),
                   ),
                 ),
-                const SizedBox(height: 14),
+
+                const SizedBox(height: 20),
+
+                /// -------- DEV BUTTONS --------
+                const Divider(),
+
+                const SizedBox(height: 10),
+
                 SizedBox(
                   width: double.infinity,
-                  height: 58,
+                  height: 52,
+                  child: OutlinedButton(
+                    onPressed: authNotifier.loginAsCandidate,
+                    child: const Text('Test candidat'),
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
                   child: OutlinedButton(
                     onPressed: authNotifier.loginAsPendingCompany,
-                    child: const Text('Accès entreprise'),
+                    child: const Text('Test entreprise (non vérifiée)'),
                   ),
                 ),
-                const SizedBox(height: 14),
+
+                const SizedBox(height: 10),
+
                 SizedBox(
                   width: double.infinity,
-                  height: 58,
+                  height: 52,
                   child: OutlinedButton(
                     onPressed: authNotifier.loginAsVerifiedCompany,
                     child: const Text('Test entreprise vérifiée'),
                   ),
                 ),
-                const SizedBox(height: 14),
+
+                const SizedBox(height: 10),
+
                 SizedBox(
                   width: double.infinity,
-                  height: 58,
+                  height: 52,
                   child: TextButton(
                     onPressed: authNotifier.loginAsAdmin,
-                    child: const Text('Test accès admin'),
+                    child: const Text('Test admin'),
                   ),
                 ),
               ],
