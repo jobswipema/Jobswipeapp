@@ -41,6 +41,48 @@ class AuthNotifier extends Notifier<AppUser> {
     }
   }
 
+  Future<void> registerWithEmailAndRole({
+    required String email,
+    required String password,
+    required String displayName,
+    required UserRole role,
+  }) async {
+    try {
+      final credential = await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      final firebaseUser = credential.user;
+
+      if (firebaseUser == null) {
+        throw 'Utilisateur introuvable après inscription.';
+      }
+
+      await firebaseUser.updateDisplayName(displayName);
+
+      final isCompany = role == UserRole.company;
+
+      await _firestore.collection('users').doc(firebaseUser.uid).set({
+        'email': email,
+        'displayName': displayName,
+        'role': isCompany ? 'company' : 'candidate',
+        'isActive': true,
+        'isVerifiedCompany': false,
+        'verificationStatus': isCompany ? 'pending' : 'none',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      final appUser = await _loadUserFromFirestore(firebaseUser);
+      state = appUser;
+    } on FirebaseAuthException catch (e) {
+      throw _mapFirebaseAuthError(e);
+    } catch (e) {
+      throw e.toString();
+    }
+  }
+
   Future<void> registerWithEmail(String email, String password) async {
     try {
       final credential = await _firebaseAuth.createUserWithEmailAndPassword(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jobswipe/shared/providers/auth_provider.dart';
+import 'package:go_router/go_router.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -143,6 +144,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     child: _isLoading
                         ? const CircularProgressIndicator()
                         : const Text('Connexion'),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: TextButton(
+                    onPressed: () {
+                      context.push('/register');
+                    },
+                    child: const Text('Créer un compte'),
                   ),
                 ),
 

@@ -7,6 +7,7 @@ import 'package:jobswipe/features/company/presentation/company_dashboard_page.da
 import 'package:jobswipe/features/home/presentation/main_navigation_page.dart';
 import 'package:jobswipe/features/splash/presentation/splash_page.dart';
 import 'package:jobswipe/shared/providers/auth_provider.dart';
+import 'package:jobswipe/features/auth/presentation/register_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final user = ref.watch(authProvider);
@@ -16,13 +17,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isAtSplash = state.matchedLocation == '/';
       final isAtLogin = state.matchedLocation == '/login';
+      final isAtRegister = state.matchedLocation == '/register';
 
       if (isAtSplash) {
         return '/login';
       }
 
       if (!user.isLoggedIn) {
-        return isAtLogin ? null : '/login';
+        return (isAtLogin || isAtRegister) ? null : '/login';
       }
 
       if (isAtLogin) {
@@ -41,6 +43,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/', builder: (context, state) => const SplashPage()),
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterPage(),
+      ),
       GoRoute(
         path: '/feed',
         builder: (context, state) => const MainNavigationPage(),
