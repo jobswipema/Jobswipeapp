@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jobswipe/core/enums/user_role.dart';
@@ -8,23 +9,11 @@ final authProvider = NotifierProvider<AuthNotifier, AppUser>(AuthNotifier.new);
 
 class AuthNotifier extends Notifier<AppUser> {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   AppUser build() {
-    final firebaseUser = _firebaseAuth.currentUser;
-
-    if (firebaseUser == null) {
-      return AppUser.guest;
-    }
-
-    return AppUser(
-      id: firebaseUser.uid,
-      email: firebaseUser.email ?? '',
-      displayName:
-          firebaseUser.displayName ?? firebaseUser.email ?? 'Utilisateur',
-      role: UserRole.candidate, // temporaire, Firestore ensuite
-      isLoggedIn: true,
-    );
+    return AppUser.guest;
   }
 
   Future<void> loginWithEmail(String email, String password) async {
@@ -40,19 +29,97 @@ class AuthNotifier extends Notifier<AppUser> {
         throw 'Utilisateur introuvable.';
       }
 
-      state = AppUser(
-        id: firebaseUser.uid,
-        email: firebaseUser.email ?? '',
-        displayName:
-            firebaseUser.displayName ?? firebaseUser.email ?? 'Utilisateur',
-        role: UserRole.candidate, // temporaire, Firestore ensuite
-        isLoggedIn: true,
-      );
+      await _createUserDocumentIfMissing(firebaseUser);
+
+      final appUser = await _loadUserFromFirestore(firebaseUser);
+
+      state = appUser;
     } on FirebaseAuthException catch (e) {
       throw _mapFirebaseAuthError(e);
-    } catch (_) {
-      throw 'Erreur de connexion inattendue.';
+    } catch (e) {
+      throw e.toString();
     }
+  }
+
+  Future<void> registerWithEmail(String email, String password) async {
+    try {
+      final credential = await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      final firebaseUser = credential.user;
+
+      if (firebaseUser == null) {
+        throw 'Utilisateur introuvable après inscription.';
+      }
+
+      await _createUserDocumentIfMissing(firebaseUser);
+
+      final appUser = await _loadUserFromFirestore(firebaseUser);
+
+      state = appUser;
+    } on FirebaseAuthException catch (e) {
+      throw _mapFirebaseAuthError(e);
+    } catch (e) {
+      throw e.toString();
+    }
+  }
+
+  Future<void> _createUserDocumentIfMissing(User firebaseUser) async {
+    final userRef = _firestore.collection('users').doc(firebaseUser.uid);
+    final userDoc = await userRef.get();
+
+    if (userDoc.exists) {
+      return;
+    }
+
+    await userRef.set({
+      'email': firebaseUser.email ?? '',
+      'displayName':
+          firebaseUser.displayName ??
+          firebaseUser.email ??
+          'Utilisateur JobSwipe',
+      'role': 'candidate',
+      'isActive': true,
+      'isVerifiedCompany': false,
+      'verificationStatus': 'none',
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<AppUser> _loadUserFromFirestore(User firebaseUser) async {
+    final doc = await _firestore
+        .collection('users')
+        .doc(firebaseUser.uid)
+        .get();
+
+    if (!doc.exists) {
+      throw 'Profil utilisateur introuvable dans Firestore.';
+    }
+
+    final data = doc.data();
+
+    if (data == null) {
+      throw 'Profil utilisateur vide dans Firestore.';
+    }
+
+    final isActive = data['isActive'] == true;
+
+    if (!isActive) {
+      throw 'Votre compte est désactivé. Contactez l’administrateur.';
+    }
+
+    return AppUser(
+      id: firebaseUser.uid,
+      email: data['email'] ?? firebaseUser.email ?? '',
+      displayName: data['displayName'] ?? firebaseUser.email ?? 'Utilisateur',
+      role: _parseRole(data['role']),
+      isLoggedIn: true,
+      isVerifiedCompany: data['isVerifiedCompany'] == true,
+      verificationStatus: _parseVerificationStatus(data['verificationStatus']),
+    );
   }
 
   Future<void> logout() async {
@@ -106,6 +173,32 @@ class AuthNotifier extends Notifier<AppUser> {
     );
   }
 
+  UserRole _parseRole(dynamic value) {
+    switch (value) {
+      case 'company':
+        return UserRole.company;
+      case 'admin':
+        return UserRole.admin;
+      case 'candidate':
+      default:
+        return UserRole.candidate;
+    }
+  }
+
+  VerificationStatus? _parseVerificationStatus(dynamic value) {
+    switch (value) {
+      case 'pending':
+        return VerificationStatus.pending;
+      case 'approved':
+        return VerificationStatus.approved;
+      case 'rejected':
+        return VerificationStatus.rejected;
+      case 'none':
+      default:
+        return null;
+    }
+  }
+
   String _mapFirebaseAuthError(FirebaseAuthException e) {
     switch (e.code) {
       case 'invalid-email':
@@ -118,12 +211,16 @@ class AuthNotifier extends Notifier<AppUser> {
         return 'Mot de passe incorrect.';
       case 'invalid-credential':
         return 'Email ou mot de passe incorrect.';
+      case 'email-already-in-use':
+        return 'Cet email est déjà utilisé.';
+      case 'weak-password':
+        return 'Le mot de passe est trop faible.';
       case 'too-many-requests':
         return 'Trop de tentatives. Réessayez plus tard.';
       case 'network-request-failed':
         return 'Problème réseau. Vérifiez votre connexion.';
       default:
-        return e.message ?? 'Erreur de connexion Firebase.';
+        return e.message ?? 'Erreur Firebase.';
     }
   }
 }
