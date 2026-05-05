@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jobswipe/core/enums/user_role.dart';
 import 'package:jobswipe/core/enums/verification_status.dart';
 import 'package:jobswipe/shared/models/app_user.dart';
+import 'package:flutter/material.dart';
 
 final authProvider = NotifierProvider<AuthNotifier, AppUser>(AuthNotifier.new);
 
@@ -147,10 +148,15 @@ class AuthNotifier extends Notifier<AppUser> {
       throw 'Profil utilisateur vide dans Firestore.';
     }
 
-    final isActive = data['isActive'] == true;
+    final isActiveValue = data['isActive'];
+
+    debugPrint('USER FIRESTORE DATA: $data');
+    debugPrint('isActive value: $isActiveValue');
+
+    final isActive = isActiveValue == true || isActiveValue == 'true';
 
     if (!isActive) {
-      throw 'Votre compte est désactivé. Contactez l’administrateur.';
+      throw 'Votre compte est désactivé. Contactez l’administrateur. Valeur isActive lue: $isActiveValue';
     }
 
     return AppUser(
