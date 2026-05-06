@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:jobswipe/shared/models/job_offer.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jobswipe/features/applications/data/applications_provider.dart';
 
-class JobInfoOverlay extends StatelessWidget {
+class JobInfoOverlay extends ConsumerWidget {
   final JobOffer job;
 
   const JobInfoOverlay({super.key, required this.job});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 90, 28),
       padding: const EdgeInsets.all(18),
@@ -71,8 +73,25 @@ class JobInfoOverlay extends StatelessWidget {
             width: double.infinity,
             height: 56,
             child: ElevatedButton(
-              style: ElevatedButton.styleFrom(elevation: 2),
-              onPressed: () {},
+              onPressed: () async {
+                try {
+                  await ref.read(applicationsServiceProvider).applyToJob(job);
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Candidature envoyée avec succès.'),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(e.toString())));
+                  }
+                }
+              },
               child: const Text('Postuler'),
             ),
           ),
