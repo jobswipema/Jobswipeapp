@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jobswipe/core/enums/user_role.dart';
-import 'package:jobswipe/features/feed/presentation/feed_page.dart';
-import 'package:jobswipe/shared/providers/auth_provider.dart';
 import 'package:jobswipe/features/company/presentation/create_job_page.dart';
+import 'package:jobswipe/features/feed/presentation/feed_page.dart';
+import 'package:jobswipe/features/profile/presentation/candidate_profile_page.dart';
+import 'package:jobswipe/shared/providers/auth_provider.dart';
 
 class MainNavigationPage extends ConsumerStatefulWidget {
   const MainNavigationPage({super.key});
@@ -39,7 +40,7 @@ class _MainNavigationPageState extends ConsumerState<MainNavigationPage> {
         _placeholderPage('Recherche'),
         _placeholderPage('Publier une offre'),
         _placeholderPage('Messages'),
-        _placeholderPage('Profil'),
+        _placeholderPage('Profil entreprise'),
       ];
     }
 
@@ -47,7 +48,7 @@ class _MainNavigationPageState extends ConsumerState<MainNavigationPage> {
       const FeedPage(),
       _placeholderPage('Recherche'),
       _placeholderPage('Messages'),
-      _placeholderPage('Profil'),
+      const CandidateProfilePage(),
     ];
   }
 

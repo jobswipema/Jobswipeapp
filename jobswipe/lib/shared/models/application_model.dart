@@ -4,6 +4,8 @@ class ApplicationModel {
   final String id;
   final String jobId;
   final String candidateId;
+  final String candidateName;
+  final String candidateEmail;
   final String companyId;
   final String companyName;
   final String jobTitle;
@@ -14,6 +16,8 @@ class ApplicationModel {
     required this.id,
     required this.jobId,
     required this.candidateId,
+    required this.candidateName,
+    required this.candidateEmail,
     required this.companyId,
     required this.companyName,
     required this.jobTitle,
@@ -28,6 +32,8 @@ class ApplicationModel {
       id: doc.id,
       jobId: data['jobId']?.toString() ?? '',
       candidateId: data['candidateId']?.toString() ?? '',
+      candidateName: data['candidateName']?.toString() ?? 'Candidat',
+      candidateEmail: data['candidateEmail']?.toString() ?? '',
       companyId: data['companyId']?.toString() ?? '',
       companyName: data['companyName']?.toString() ?? '',
       jobTitle: data['jobTitle']?.toString() ?? '',

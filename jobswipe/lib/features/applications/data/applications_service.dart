@@ -27,6 +27,8 @@ class ApplicationsService {
     await _firestore.collection('applications').add({
       'jobId': job.id,
       'candidateId': user.uid,
+      'candidateName': user.displayName ?? user.email ?? 'Candidat',
+      'candidateEmail': user.email ?? '',
       'companyId': job.companyId,
       'companyName': job.companyName,
       'jobTitle': job.title,

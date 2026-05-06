@@ -138,6 +138,11 @@ class CompanyApplicationsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 22),
                   ...applications.map((application) {
+                    final candidateDisplayName =
+                        application.candidateName.trim().isNotEmpty
+                        ? application.candidateName
+                        : application.candidateId;
+
                     return Container(
                       width: double.infinity,
                       margin: const EdgeInsets.only(bottom: 12),
@@ -159,12 +164,22 @@ class CompanyApplicationsPage extends StatelessWidget {
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            application.candidateId,
+                            candidateDisplayName,
                             style: const TextStyle(
-                              fontSize: 15,
+                              fontSize: 17,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
+                          if (application.candidateEmail.trim().isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              application.candidateEmail,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white.withOpacity(0.65),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 12),
                           Container(
                             padding: const EdgeInsets.symmetric(
