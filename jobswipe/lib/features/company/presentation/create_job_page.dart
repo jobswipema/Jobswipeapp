@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class CreateJobPage extends StatefulWidget {
   const CreateJobPage({super.key});
@@ -435,7 +437,35 @@ class _CreateJobPageState extends State<CreateJobPage> {
                 width: double.infinity,
                 height: 58,
                 child: ElevatedButton.icon(
-                  onPressed: _publishJob,
+                  onPressed: () async {
+                    final user = FirebaseAuth.instance.currentUser;
+
+                    if (user == null) return;
+
+                    await FirebaseFirestore.instance.collection('jobs').add({
+                      'title': _titleController.text,
+                      'description': _descriptionController.text,
+                      'companyId': user.uid,
+                      'companyName': 'Entreprise One', // temporaire
+                      'location': _locationController.text,
+                      'contractType': _contractType,
+                      'experienceLevel': _experienceLevel,
+                      'category': _category,
+                      'salary': _salaryController.text.isNotEmpty
+                          ? int.tryParse(_salaryController.text)
+                          : null,
+                      'isActive': true,
+                      'createdAt': FieldValue.serverTimestamp(),
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Offre publiée avec succès'),
+                      ),
+                    );
+
+                    Navigator.pop(context);
+                  },
                   icon: const Icon(Icons.publish_outlined),
                   label: const Text('Publier l’offre'),
                 ),
