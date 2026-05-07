@@ -1,12 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jobswipe/features/profile/presentation/edit_candidate_profile_page.dart';
 import 'package:jobswipe/shared/models/application_model.dart';
 import 'package:jobswipe/shared/providers/auth_provider.dart';
-import 'package:jobswipe/features/profile/presentation/edit_candidate_profile_page.dart';
+import 'package:jobswipe/shared/services/cloudinary_service.dart';
 
-class CandidateProfilePage extends ConsumerWidget {
+class CandidateProfilePage extends ConsumerStatefulWidget {
   const CandidateProfilePage({super.key});
+
+  @override
+  ConsumerState<CandidateProfilePage> createState() =>
+      _CandidateProfilePageState();
+}
+
+class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
+  bool _isUploadingCv = false;
 
   Stream<DocumentSnapshot<Map<String, dynamic>>> _profileStream(String uid) {
     return FirebaseFirestore.instance.collection('users').doc(uid).snapshots();
@@ -35,6 +45,67 @@ class CandidateProfilePage extends ConsumerWidget {
 
           return applications;
         });
+  }
+
+  Future<void> _uploadCv() async {
+    final user = ref.read(authProvider);
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+      withData: true,
+    );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.single;
+
+    if (file.bytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossible de lire le fichier PDF.')),
+      );
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Le CV ne doit pas dépasser 5 Mo.')),
+      );
+      return;
+    }
+
+    setState(() => _isUploadingCv = true);
+
+    try {
+      final cvUrl = await CloudinaryService.uploadPdf(
+        fileBytes: file.bytes!,
+        fileName: file.name,
+        folder: 'jobswipe/cvs/${user.id}',
+      );
+
+      await FirebaseFirestore.instance.collection('users').doc(user.id).update({
+        'cvUrl': cvUrl,
+        'cvFileName': file.name,
+        'cvUpdatedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('CV téléversé avec succès.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erreur upload CV : $e')));
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingCv = false);
+      }
+    }
   }
 
   String _statusLabel(String status) {
@@ -70,7 +141,7 @@ class CandidateProfilePage extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final user = ref.watch(authProvider);
 
     return Scaffold(
@@ -111,6 +182,10 @@ class CandidateProfilePage extends ConsumerWidget {
             final bio =
                 data['bio']?.toString() ??
                 'Ajoutez une courte présentation professionnelle pour améliorer votre profil.';
+
+            final cvUrl = data['cvUrl']?.toString() ?? '';
+            final cvFileName = data['cvFileName']?.toString() ?? '';
+
             final skillsRaw = data['skills'];
             final skills = skillsRaw is List
                 ? skillsRaw.map((e) => e.toString()).toList()
@@ -137,6 +212,13 @@ class CandidateProfilePage extends ConsumerWidget {
                       _BioCard(bio: bio),
                       const SizedBox(height: 18),
                       _SkillsCard(skills: skills),
+                      const SizedBox(height: 18),
+                      _CvCard(
+                        cvUrl: cvUrl,
+                        cvFileName: cvFileName,
+                        isUploading: _isUploadingCv,
+                        onUpload: _uploadCv,
+                      ),
                       const SizedBox(height: 18),
                       SizedBox(
                         width: double.infinity,
@@ -366,6 +448,59 @@ class _SkillsCard extends StatelessWidget {
                 );
               }).toList(),
             ),
+    );
+  }
+}
+
+class _CvCard extends StatelessWidget {
+  final String cvUrl;
+  final String cvFileName;
+  final bool isUploading;
+  final VoidCallback onUpload;
+
+  const _CvCard({
+    required this.cvUrl,
+    required this.cvFileName,
+    required this.isUploading,
+    required this.onUpload,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasCv = cvUrl.trim().isNotEmpty;
+
+    return _SectionCard(
+      title: 'CV PDF',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            hasCv
+                ? 'CV chargé : ${cvFileName.isEmpty ? 'cv.pdf' : cvFileName}'
+                : 'Aucun CV téléversé.',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.75),
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: isUploading ? null : onUpload,
+              icon: const Icon(Icons.upload_file_outlined),
+              label: Text(
+                isUploading
+                    ? 'Téléversement...'
+                    : hasCv
+                    ? 'Remplacer mon CV'
+                    : 'Téléverser mon CV',
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
