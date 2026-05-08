@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jobswipe/features/feed/data/jobs_provider.dart';
-import 'package:jobswipe/features/feed/presentation/widgets/job_video_card.dart';
+import 'package:jobswipe/features/feed/presentation/widgets/tiktok_video_card.dart';
 import 'package:jobswipe/shared/providers/auth_provider.dart';
 
 class FeedPage extends ConsumerStatefulWidget {
@@ -72,7 +72,7 @@ class _FeedPageState extends ConsumerState<FeedPage>
                 scrollDirection: Axis.vertical,
                 itemCount: jobs.length,
                 itemBuilder: (context, index) {
-                  return JobVideoCard(job: jobs[index]);
+                  return TikTokVideoCard(job: jobs[index]);
                 },
               ),
               _logoutButton(authNotifier),

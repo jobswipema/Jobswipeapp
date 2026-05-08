@@ -14,6 +14,8 @@ class JobOffer {
   final String description;
   final bool isActive;
   final DateTime? createdAt;
+  final String videoUrl;
+  final String videoFileName;
 
   const JobOffer({
     required this.id,
@@ -29,6 +31,8 @@ class JobOffer {
     required this.description,
     required this.isActive,
     required this.createdAt,
+    required this.videoUrl,
+    required this.videoFileName,
   });
 
   factory JobOffer.fromFirestore(DocumentSnapshot doc) {
@@ -52,6 +56,8 @@ class JobOffer {
       createdAt: data['createdAt'] is Timestamp
           ? (data['createdAt'] as Timestamp).toDate()
           : null,
+      videoUrl: data['videoUrl']?.toString() ?? '',
+      videoFileName: data['videoFileName']?.toString() ?? '',
     );
   }
 }
