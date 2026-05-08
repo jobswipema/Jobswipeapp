@@ -24,11 +24,32 @@ class ApplicationsService {
       throw 'Vous avez déjà postulé à cette offre.';
     }
 
+    final candidateDoc = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    final candidateData = candidateDoc.data() ?? {};
+
+    final candidateName =
+        candidateData['displayName']?.toString() ??
+        user.displayName ??
+        user.email ??
+        'Candidat';
+
+    final candidateEmail =
+        candidateData['email']?.toString() ?? user.email ?? '';
+
+    final candidateCvUrl = candidateData['cvUrl']?.toString() ?? '';
+    final candidateCvFileName = candidateData['cvFileName']?.toString() ?? '';
+
     await _firestore.collection('applications').add({
       'jobId': job.id,
       'candidateId': user.uid,
-      'candidateName': user.displayName ?? user.email ?? 'Candidat',
-      'candidateEmail': user.email ?? '',
+      'candidateName': candidateName,
+      'candidateEmail': candidateEmail,
+      'candidateCvUrl': candidateCvUrl,
+      'candidateCvFileName': candidateCvFileName,
       'companyId': job.companyId,
       'companyName': job.companyName,
       'jobTitle': job.title,

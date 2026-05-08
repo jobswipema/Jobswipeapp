@@ -6,6 +6,8 @@ class ApplicationModel {
   final String candidateId;
   final String candidateName;
   final String candidateEmail;
+  final String candidateCvUrl;
+  final String candidateCvFileName;
   final String companyId;
   final String companyName;
   final String jobTitle;
@@ -18,6 +20,8 @@ class ApplicationModel {
     required this.candidateId,
     required this.candidateName,
     required this.candidateEmail,
+    required this.candidateCvUrl,
+    required this.candidateCvFileName,
     required this.companyId,
     required this.companyName,
     required this.jobTitle,
@@ -34,6 +38,8 @@ class ApplicationModel {
       candidateId: data['candidateId']?.toString() ?? '',
       candidateName: data['candidateName']?.toString() ?? 'Candidat',
       candidateEmail: data['candidateEmail']?.toString() ?? '',
+      candidateCvUrl: data['candidateCvUrl']?.toString() ?? '',
+      candidateCvFileName: data['candidateCvFileName']?.toString() ?? '',
       companyId: data['companyId']?.toString() ?? '',
       companyName: data['companyName']?.toString() ?? '',
       jobTitle: data['jobTitle']?.toString() ?? '',

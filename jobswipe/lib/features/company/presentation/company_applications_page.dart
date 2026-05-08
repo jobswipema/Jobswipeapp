@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:jobswipe/shared/models/application_model.dart';
 import 'package:jobswipe/shared/models/job_offer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CompanyApplicationsPage extends StatelessWidget {
   final JobOffer job;
@@ -32,6 +33,25 @@ class CompanyApplicationsPage extends StatelessWidget {
 
           return applications;
         });
+  }
+
+  Future<void> _openCv(BuildContext context, String cvUrl) async {
+    if (cvUrl.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aucun CV disponible pour ce candidat.')),
+      );
+      return;
+    }
+
+    final uri = Uri.parse(cvUrl);
+
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossible d’ouvrir le CV.')),
+      );
+    }
   }
 
   Future<void> _updateStatus(
@@ -138,10 +158,12 @@ class CompanyApplicationsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 22),
                   ...applications.map((application) {
-                    final candidateDisplayName =
+                    final candidateName =
                         application.candidateName.trim().isNotEmpty
                         ? application.candidateName
                         : application.candidateId;
+
+                    final hasCv = application.candidateCvUrl.trim().isNotEmpty;
 
                     return Container(
                       width: double.infinity,
@@ -164,13 +186,13 @@ class CompanyApplicationsPage extends StatelessWidget {
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            candidateDisplayName,
+                            candidateName,
                             style: const TextStyle(
-                              fontSize: 17,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          if (application.candidateEmail.trim().isNotEmpty) ...[
+                          if (application.candidateEmail.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Text(
                               application.candidateEmail,
@@ -205,6 +227,34 @@ class CompanyApplicationsPage extends StatelessWidget {
                               ),
                             ),
                           ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 46,
+                            child: OutlinedButton.icon(
+                              onPressed: hasCv
+                                  ? () => _openCv(
+                                      context,
+                                      application.candidateCvUrl,
+                                    )
+                                  : null,
+                              icon: const Icon(Icons.picture_as_pdf_outlined),
+                              label: Text(
+                                hasCv ? 'Voir le CV' : 'CV non disponible',
+                              ),
+                            ),
+                          ),
+                          if (hasCv &&
+                              application.candidateCvFileName.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              application.candidateCvFileName,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.white.withOpacity(0.55),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 14),
                           Wrap(
                             spacing: 8,
