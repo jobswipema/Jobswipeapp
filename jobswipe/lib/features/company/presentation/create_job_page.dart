@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:jobswipe/shared/services/cloudinary_service.dart';
 
 class CreateJobPage extends StatefulWidget {
   const CreateJobPage({super.key});
@@ -20,7 +22,12 @@ class _CreateJobPageState extends State<CreateJobPage> {
   String _contractType = 'CDI';
   String _experienceLevel = 'Débutant';
   String _category = 'Développement';
-  bool _videoSelected = false;
+
+  String _videoUrl = '';
+  String _videoFileName = '';
+
+  bool _isUploadingVideo = false;
+  bool _isPublishing = false;
 
   @override
   void dispose() {
@@ -31,35 +38,123 @@ class _CreateJobPageState extends State<CreateJobPage> {
     super.dispose();
   }
 
-  void _selectMockVideo() {
-    setState(() {
-      _videoSelected = true;
-    });
+  Future<void> _selectAndUploadVideo() async {
+    final user = FirebaseAuth.instance.currentUser;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Vidéo sélectionnée en mode simulation')),
+    if (user == null) {
+      _showSnack('Utilisateur non connecté.');
+      return;
+    }
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['mp4', 'mov', 'm4v'],
+      withData: true,
     );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.single;
+
+    if (file.bytes == null) {
+      _showSnack('Impossible de lire la vidéo sélectionnée.');
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      _showSnack('La vidéo ne doit pas dépasser 50 Mo.');
+      return;
+    }
+
+    setState(() => _isUploadingVideo = true);
+
+    try {
+      final videoUrl = await CloudinaryService.uploadVideo(
+        fileBytes: file.bytes!,
+        fileName: file.name,
+        folder: 'jobswipe/videos/${user.uid}',
+      );
+
+      setState(() {
+        _videoUrl = videoUrl;
+        _videoFileName = file.name;
+      });
+
+      _showSnack('Vidéo téléversée avec succès.');
+    } catch (e) {
+      _showSnack('Erreur upload vidéo : $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingVideo = false);
+      }
+    }
   }
 
-  void _publishJob() {
-    if (!_formKey.currentState!.validate()) {
+  Future<void> _publishJob() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_videoUrl.isEmpty) {
+      _showSnack('Veuillez téléverser une vidéo pour publier l’offre.');
       return;
     }
 
-    if (!_videoSelected) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez sélectionner une vidéo pour l’offre.'),
-        ),
-      );
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      _showSnack('Utilisateur non connecté.');
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Offre créée avec succès en mode simulation.'),
-      ),
-    );
+    setState(() => _isPublishing = true);
+
+    try {
+      final companyDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      final companyData = companyDoc.data() ?? {};
+      final companyName =
+          companyData['displayName']?.toString() ?? 'Entreprise';
+
+      await FirebaseFirestore.instance.collection('jobs').add({
+        'title': _titleController.text.trim(),
+        'description': _descriptionController.text.trim(),
+        'companyId': user.uid,
+        'companyName': companyName,
+        'location': _locationController.text.trim(),
+        'contractType': _contractType,
+        'experienceLevel': _experienceLevel,
+        'category': _category,
+        'salary': _salaryController.text.trim().isNotEmpty
+            ? int.tryParse(_salaryController.text.trim())
+            : null,
+        'videoUrl': _videoUrl,
+        'videoFileName': _videoFileName,
+        'thumbnailUrl': '',
+        'applicationsCount': 0,
+        'isActive': true,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+
+      _showSnack('Offre publiée avec succès.');
+      Navigator.of(context).pop();
+    } catch (e) {
+      _showSnack('Erreur publication offre : $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isPublishing = false);
+      }
+    }
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   InputDecoration _inputDecoration(String label, IconData icon) {
@@ -148,7 +243,9 @@ class _CreateJobPageState extends State<CreateJobPage> {
 
     final salary = _salaryController.text.trim().isEmpty
         ? 'Salaire optionnel'
-        : _salaryController.text.trim();
+        : '${_salaryController.text.trim()} MAD';
+
+    final hasVideo = _videoUrl.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Créer une offre')),
@@ -182,7 +279,6 @@ class _CreateJobPageState extends State<CreateJobPage> {
                       },
                     ),
                     const SizedBox(height: 18),
-
                     TextFormField(
                       controller: _descriptionController,
                       maxLines: 4,
@@ -202,7 +298,6 @@ class _CreateJobPageState extends State<CreateJobPage> {
                       },
                     ),
                     const SizedBox(height: 14),
-
                     TextFormField(
                       controller: _locationController,
                       decoration: _inputDecoration(
@@ -218,7 +313,6 @@ class _CreateJobPageState extends State<CreateJobPage> {
                       },
                     ),
                     const SizedBox(height: 14),
-
                     _dropdown(
                       label: 'Type de contrat',
                       value: _contractType,
@@ -230,16 +324,12 @@ class _CreateJobPageState extends State<CreateJobPage> {
                         'Freelance',
                         'Alternance',
                       ],
-
                       onChanged: (value) {
                         if (value == null) return;
-                        setState(() {
-                          _contractType = value;
-                        });
+                        setState(() => _contractType = value);
                       },
                     ),
                     const SizedBox(height: 14),
-
                     _dropdown(
                       label: 'Niveau d’expérience',
                       value: _experienceLevel,
@@ -253,13 +343,10 @@ class _CreateJobPageState extends State<CreateJobPage> {
                       ],
                       onChanged: (value) {
                         if (value == null) return;
-                        setState(() {
-                          _experienceLevel = value;
-                        });
+                        setState(() => _experienceLevel = value);
                       },
                     ),
                     const SizedBox(height: 14),
-
                     _dropdown(
                       label: 'Catégorie métier',
                       value: _category,
@@ -275,15 +362,13 @@ class _CreateJobPageState extends State<CreateJobPage> {
                       ],
                       onChanged: (value) {
                         if (value == null) return;
-                        setState(() {
-                          _category = value;
-                        });
+                        setState(() => _category = value);
                       },
                     ),
                     const SizedBox(height: 14),
-
                     TextFormField(
                       controller: _salaryController,
+                      keyboardType: TextInputType.number,
                       decoration: _inputDecoration(
                         'Salaire affiché',
                         Icons.payments_outlined,
@@ -300,16 +385,15 @@ class _CreateJobPageState extends State<CreateJobPage> {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(22),
-
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [const Color(0xFF1A2235), const Color(0xFF131A2B)],
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1A2235), Color(0xFF131A2B)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(22),
                   border: Border.all(
-                    color: _videoSelected ? Colors.greenAccent : Colors.white12,
+                    color: hasVideo ? Colors.greenAccent : Colors.white12,
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -322,19 +406,15 @@ class _CreateJobPageState extends State<CreateJobPage> {
                 child: Column(
                   children: [
                     Icon(
-                      _videoSelected
+                      hasVideo
                           ? Icons.check_circle_outline
                           : Icons.video_library_outlined,
                       size: 42,
-                      color: _videoSelected
-                          ? Colors.greenAccent
-                          : Colors.white70,
+                      color: hasVideo ? Colors.greenAccent : Colors.white70,
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      _videoSelected
-                          ? 'Vidéo sélectionnée'
-                          : 'Aucune vidéo sélectionnée',
+                      hasVideo ? 'Vidéo téléversée' : 'Aucune vidéo téléversée',
                       style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
@@ -342,7 +422,9 @@ class _CreateJobPageState extends State<CreateJobPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Pour cette étape, la sélection vidéo est simulée. L’upload réel Firebase Storage sera ajouté plus tard.',
+                      hasVideo
+                          ? _videoFileName
+                          : 'Sélectionnez une vidéo verticale MP4/MOV. Taille maximale recommandée : 50 Mo.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.65),
@@ -354,9 +436,17 @@ class _CreateJobPageState extends State<CreateJobPage> {
                       width: double.infinity,
                       height: 50,
                       child: OutlinedButton.icon(
-                        onPressed: _selectMockVideo,
+                        onPressed: _isUploadingVideo
+                            ? null
+                            : _selectAndUploadVideo,
                         icon: const Icon(Icons.upload_file),
-                        label: const Text('Sélectionner une vidéo'),
+                        label: Text(
+                          _isUploadingVideo
+                              ? 'Téléversement...'
+                              : hasVideo
+                              ? 'Remplacer la vidéo'
+                              : 'Téléverser une vidéo',
+                        ),
                       ),
                     ),
                   ],
@@ -437,37 +527,11 @@ class _CreateJobPageState extends State<CreateJobPage> {
                 width: double.infinity,
                 height: 58,
                 child: ElevatedButton.icon(
-                  onPressed: () async {
-                    final user = FirebaseAuth.instance.currentUser;
-
-                    if (user == null) return;
-
-                    await FirebaseFirestore.instance.collection('jobs').add({
-                      'title': _titleController.text,
-                      'description': _descriptionController.text,
-                      'companyId': user.uid,
-                      'companyName': 'Entreprise One', // temporaire
-                      'location': _locationController.text,
-                      'contractType': _contractType,
-                      'experienceLevel': _experienceLevel,
-                      'category': _category,
-                      'salary': _salaryController.text.isNotEmpty
-                          ? int.tryParse(_salaryController.text)
-                          : null,
-                      'isActive': true,
-                      'createdAt': FieldValue.serverTimestamp(),
-                    });
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Offre publiée avec succès'),
-                      ),
-                    );
-
-                    Navigator.pop(context);
-                  },
+                  onPressed: _isPublishing ? null : _publishJob,
                   icon: const Icon(Icons.publish_outlined),
-                  label: const Text('Publier l’offre'),
+                  label: Text(
+                    _isPublishing ? 'Publication...' : 'Publier l’offre',
+                  ),
                 ),
               ),
             ],
