@@ -60,4 +60,15 @@ class CloudinaryService {
     final data = jsonDecode(responseBody) as Map<String, dynamic>;
     return data['secure_url'].toString();
   }
+
+  static String generateVideoThumbnailUrl(String videoUrl) {
+    if (videoUrl.trim().isEmpty) return '';
+
+    return videoUrl
+        .replaceFirst(
+          '/video/upload/',
+          '/video/upload/so_1,w_600,h_1000,c_fill/',
+        )
+        .replaceAll(RegExp(r'\.(mp4|mov|m4v)$', caseSensitive: false), '.jpg');
+  }
 }

@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:jobswipe/shared/services/cloudinary_service.dart';
+import 'package:jobswipe/shared/services/cloudinary_service.dart';
 
 class CreateJobPage extends StatefulWidget {
   const CreateJobPage({super.key});
@@ -97,6 +98,7 @@ class _CreateJobPageState extends State<CreateJobPage> {
       _showSnack('Veuillez téléverser une vidéo pour publier l’offre.');
       return;
     }
+    final thumbnailUrl = CloudinaryService.generateVideoThumbnailUrl(_videoUrl);
 
     final user = FirebaseAuth.instance.currentUser;
 
@@ -131,7 +133,10 @@ class _CreateJobPageState extends State<CreateJobPage> {
             : null,
         'videoUrl': _videoUrl,
         'videoFileName': _videoFileName,
-        'thumbnailUrl': '',
+        'thumbnailUrl': thumbnailUrl,
+        'viewsCount': 0,
+        'likesCount': 0,
+        'favoritesCount': 0,
         'applicationsCount': 0,
         'isActive': true,
         'createdAt': FieldValue.serverTimestamp(),

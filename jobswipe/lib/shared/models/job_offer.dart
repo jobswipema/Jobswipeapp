@@ -14,8 +14,15 @@ class JobOffer {
   final String description;
   final bool isActive;
   final DateTime? createdAt;
+
   final String videoUrl;
   final String videoFileName;
+  final String thumbnailUrl;
+
+  final int viewsCount;
+  final int likesCount;
+  final int favoritesCount;
+  final int applicationsCount;
 
   const JobOffer({
     required this.id,
@@ -33,6 +40,11 @@ class JobOffer {
     required this.createdAt,
     required this.videoUrl,
     required this.videoFileName,
+    required this.thumbnailUrl,
+    required this.viewsCount,
+    required this.likesCount,
+    required this.favoritesCount,
+    required this.applicationsCount,
   });
 
   factory JobOffer.fromFirestore(DocumentSnapshot doc) {
@@ -58,6 +70,18 @@ class JobOffer {
           : null,
       videoUrl: data['videoUrl']?.toString() ?? '',
       videoFileName: data['videoFileName']?.toString() ?? '',
+      thumbnailUrl: data['thumbnailUrl']?.toString() ?? '',
+      viewsCount: _toInt(data['viewsCount']),
+      likesCount: _toInt(data['likesCount']),
+      favoritesCount: _toInt(data['favoritesCount']),
+      applicationsCount: _toInt(data['applicationsCount']),
     );
+  }
+
+  static int _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 }

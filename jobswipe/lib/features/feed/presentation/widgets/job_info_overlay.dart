@@ -1,12 +1,48 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jobswipe/features/applications/data/applications_provider.dart';
+import 'package:jobswipe/features/feed/data/job_interactions_provider.dart';
 import 'package:jobswipe/shared/models/job_offer.dart';
 
 class JobInfoOverlay extends ConsumerWidget {
   final JobOffer job;
 
   const JobInfoOverlay({super.key, required this.job});
+
+  String _formatCount(int value) {
+    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
+    if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
+    return value.toString();
+  }
+
+  String _interactionDocId(String jobId) {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    return '${jobId}_$uid';
+  }
+
+  Stream<bool> _likedStream() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return Stream.value(false);
+
+    return FirebaseFirestore.instance
+        .collection('job_likes')
+        .doc(_interactionDocId(job.id))
+        .snapshots()
+        .map((doc) => doc.exists);
+  }
+
+  Stream<bool> _favoriteStream() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return Stream.value(false);
+
+    return FirebaseFirestore.instance
+        .collection('job_favorites')
+        .doc(_interactionDocId(job.id))
+        .snapshots()
+        .map((doc) => doc.exists);
+  }
 
   Future<void> _apply(BuildContext context, WidgetRef ref) async {
     try {
@@ -26,6 +62,30 @@ class JobInfoOverlay extends ConsumerWidget {
     }
   }
 
+  Future<void> _toggleLike(BuildContext context, WidgetRef ref) async {
+    try {
+      await ref.read(jobInteractionsServiceProvider).toggleLike(job.id);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
+
+  Future<void> _toggleFavorite(BuildContext context, WidgetRef ref) async {
+    try {
+      await ref.read(jobInteractionsServiceProvider).toggleFavorite(job.id);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return SafeArea(
@@ -36,23 +96,49 @@ class JobInfoOverlay extends ConsumerWidget {
             bottom: 145,
             child: Column(
               children: [
-                _ActionButton(
-                  icon: Icons.favorite,
-                  value: '23.5K',
-                  onTap: () {},
+                StreamBuilder<bool>(
+                  stream: _likedStream(),
+                  builder: (context, snapshot) {
+                    final isLiked = snapshot.data ?? false;
+
+                    return _ActionButton(
+                      icon: Icons.favorite,
+                      value: _formatCount(job.likesCount),
+                      isActive: isLiked,
+                      activeColor: const Color(0xFFFF4D6D),
+                      activeBackgroundColor: const Color(
+                        0xFFFF2D55,
+                      ).withOpacity(0.25),
+                      onTap: () => _toggleLike(context, ref),
+                    );
+                  },
+                ),
+                const SizedBox(height: 18),
+                StreamBuilder<bool>(
+                  stream: _favoriteStream(),
+                  builder: (context, snapshot) {
+                    final isFavorite = snapshot.data ?? false;
+
+                    return _ActionButton(
+                      icon: isFavorite ? Icons.bookmark : Icons.bookmark_border,
+                      value: _formatCount(job.favoritesCount),
+                      isActive: isFavorite,
+                      activeColor: Colors.amberAccent,
+                      activeBackgroundColor: Colors.amber.withOpacity(0.22),
+                      onTap: () => _toggleFavorite(context, ref),
+                    );
+                  },
                 ),
                 const SizedBox(height: 18),
                 _ActionButton(
-                  icon: Icons.bookmark_border,
-                  value: '1.1K',
+                  icon: Icons.work_outline,
+                  value: _formatCount(job.applicationsCount),
+                  isActive: false,
                   onTap: () {},
                 ),
-                const SizedBox(height: 18),
-                _ActionButton(icon: Icons.send, value: '212', onTap: () {}),
               ],
             ),
           ),
-
           Positioned(
             left: 14,
             right: 74,
@@ -145,37 +231,96 @@ class JobInfoOverlay extends ConsumerWidget {
   }
 }
 
-class _ActionButton extends StatelessWidget {
+class _ActionButton extends StatefulWidget {
   final IconData icon;
   final String value;
   final VoidCallback onTap;
+  final bool isActive;
+  final Color activeColor;
+  final Color activeBackgroundColor;
 
   const _ActionButton({
     required this.icon,
     required this.value,
     required this.onTap,
+    required this.isActive,
+    this.activeColor = const Color(0xFFFF4D6D),
+    this.activeBackgroundColor = const Color(0x40FF2D55),
   });
 
   @override
+  State<_ActionButton> createState() => _ActionButtonState();
+}
+
+class _ActionButtonState extends State<_ActionButton> {
+  bool _isPressed = false;
+  late bool _localActive;
+
+  @override
+  void initState() {
+    super.initState();
+    _localActive = widget.isActive;
+  }
+
+  @override
+  void didUpdateWidget(covariant _ActionButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive) {
+      _localActive = widget.isActive;
+    }
+  }
+
+  Future<void> _handleTap() async {
+    setState(() {
+      _isPressed = true;
+      _localActive = !_localActive;
+    });
+
+    await Future.delayed(const Duration(milliseconds: 140));
+
+    if (mounted) {
+      setState(() {
+        _isPressed = false;
+      });
+    }
+
+    widget.onTap();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final color = _localActive ? widget.activeColor : Colors.white;
+    final bgColor = _localActive
+        ? widget.activeBackgroundColor
+        : Colors.black.withOpacity(0.38);
+
     return Column(
       children: [
-        InkWell(
-          borderRadius: BorderRadius.circular(999),
-          onTap: onTap,
-          child: Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.38),
-              shape: BoxShape.circle,
+        GestureDetector(
+          onTap: _handleTap,
+          child: AnimatedScale(
+            scale: _isPressed ? 1.28 : 1.0,
+            duration: const Duration(milliseconds: 170),
+            curve: Curves.easeOutBack,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: bgColor,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: _localActive ? widget.activeColor : Colors.transparent,
+                  width: 1.5,
+                ),
+              ),
+              child: Icon(widget.icon, color: color, size: 28),
             ),
-            child: Icon(icon, color: Colors.white, size: 28),
           ),
         ),
         const SizedBox(height: 5),
         Text(
-          value,
+          widget.value,
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
         ),
       ],

@@ -18,20 +18,24 @@ class _TikTokVideoCardState extends State<TikTokVideoCard> {
 
   bool _isInitialized = false;
   bool _isMuted = false;
-  bool _isVisible = true;
+  bool _isVisible = false;
+  bool _isLoading = false;
   bool _hasError = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _initVideo();
-  }
+  Future<void> _initializeVideoIfNeeded() async {
+    if (_controller != null || _isLoading) return;
 
-  Future<void> _initVideo() async {
     if (widget.job.videoUrl.trim().isEmpty) {
-      setState(() => _hasError = true);
+      if (mounted) {
+        setState(() => _hasError = true);
+      }
       return;
     }
+
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
 
     try {
       final controller = VideoPlayerController.networkUrl(
@@ -42,47 +46,83 @@ class _TikTokVideoCardState extends State<TikTokVideoCard> {
 
       await controller.initialize();
       await controller.setLooping(true);
-      await controller.setVolume(1);
+      await controller.setVolume(_isMuted ? 0 : 1);
 
       if (!mounted) return;
 
       setState(() {
         _isInitialized = true;
+        _isLoading = false;
       });
 
-      await controller.play();
+      if (_isVisible) {
+        await controller.play();
+      }
     } catch (_) {
       if (!mounted) return;
-      setState(() => _hasError = true);
+
+      setState(() {
+        _hasError = true;
+        _isLoading = false;
+      });
     }
   }
 
-  Future<void> _handleVisibility(double visibleFraction) async {
+  Future<void> _disposeVideo() async {
     final controller = _controller;
-    if (controller == null || !_isInitialized) return;
 
-    final shouldPlay = visibleFraction > 0.70;
+    if (controller == null) return;
 
-    if (shouldPlay && !_isVisible) {
+    await controller.pause();
+    await controller.dispose();
+
+    if (!mounted) return;
+
+    setState(() {
+      _controller = null;
+      _isInitialized = false;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _handleVisibility(double visibleFraction) async {
+    final shouldBeVisible = visibleFraction > 0.70;
+
+    if (shouldBeVisible && !_isVisible) {
       _isVisible = true;
-      await controller.play();
+
+      await _initializeVideoIfNeeded();
+
+      if (_controller != null && _isInitialized) {
+        await _controller!.play();
+      }
+
+      return;
     }
 
-    if (!shouldPlay && _isVisible) {
+    if (!shouldBeVisible && _isVisible) {
       _isVisible = false;
-      await controller.pause();
+
+      if (_controller != null) {
+        await _controller!.pause();
+      }
+
+      if (visibleFraction < 0.10) {
+        await _disposeVideo();
+      }
     }
   }
 
   void _toggleMute() {
     final controller = _controller;
-    if (controller == null) return;
 
     setState(() {
       _isMuted = !_isMuted;
     });
 
-    controller.setVolume(_isMuted ? 0 : 1);
+    if (controller != null) {
+      controller.setVolume(_isMuted ? 0 : 1);
+    }
   }
 
   @override
@@ -131,10 +171,7 @@ class _TikTokVideoCardState extends State<TikTokVideoCard> {
               ),
             )
           else
-            Container(
-              color: const Color(0xFF020713),
-              child: const Center(child: CircularProgressIndicator()),
-            ),
+            _VideoLoadingPlaceholder(thumbnailUrl: widget.job.thumbnailUrl),
 
           Container(
             decoration: BoxDecoration(
@@ -168,6 +205,37 @@ class _TikTokVideoCardState extends State<TikTokVideoCard> {
           JobInfoOverlay(job: widget.job),
         ],
       ),
+    );
+  }
+}
+
+class _VideoLoadingPlaceholder extends StatelessWidget {
+  final String thumbnailUrl;
+
+  const _VideoLoadingPlaceholder({required this.thumbnailUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    if (thumbnailUrl.trim().isEmpty) {
+      return Container(
+        color: const Color(0xFF020713),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.network(
+          thumbnailUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) {
+            return Container(color: const Color(0xFF020713));
+          },
+        ),
+        Container(color: Colors.black.withOpacity(0.25)),
+        const Center(child: CircularProgressIndicator()),
+      ],
     );
   }
 }
