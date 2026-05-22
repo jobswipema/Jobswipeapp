@@ -1,21 +1,27 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jobswipe/features/feed/data/job_interactions_provider.dart';
 import 'package:jobswipe/features/feed/presentation/widgets/job_info_overlay.dart';
 import 'package:jobswipe/shared/models/job_offer.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
-class TikTokVideoCard extends StatefulWidget {
+class TikTokVideoCard extends ConsumerStatefulWidget {
   final JobOffer job;
 
   const TikTokVideoCard({super.key, required this.job});
 
   @override
-  State<TikTokVideoCard> createState() => _TikTokVideoCardState();
+  ConsumerState<TikTokVideoCard> createState() => _TikTokVideoCardState();
 }
 
-class _TikTokVideoCardState extends State<TikTokVideoCard> {
+class _TikTokVideoCardState extends ConsumerState<TikTokVideoCard> {
   VideoPlayerController? _controller;
+  Timer? _viewTimer;
 
+  bool _viewRegistered = false;
   bool _isInitialized = false;
   bool _isMuted = false;
   bool _isVisible = false;
@@ -57,6 +63,7 @@ class _TikTokVideoCardState extends State<TikTokVideoCard> {
 
       if (_isVisible) {
         await controller.play();
+        _startViewTimer();
       }
     } catch (_) {
       if (!mounted) return;
@@ -68,10 +75,32 @@ class _TikTokVideoCardState extends State<TikTokVideoCard> {
     }
   }
 
+  void _startViewTimer() {
+    if (_viewRegistered) return;
+
+    _viewTimer?.cancel();
+
+    _viewTimer = Timer(const Duration(seconds: 3), () async {
+      if (!mounted || _viewRegistered || !_isVisible) return;
+
+      _viewRegistered = true;
+
+      await ref
+          .read(jobInteractionsServiceProvider)
+          .registerView(widget.job.id);
+    });
+  }
+
+  void _cancelViewTimer() {
+    _viewTimer?.cancel();
+  }
+
   Future<void> _disposeVideo() async {
     final controller = _controller;
 
     if (controller == null) return;
+
+    _cancelViewTimer();
 
     await controller.pause();
     await controller.dispose();
@@ -95,6 +124,7 @@ class _TikTokVideoCardState extends State<TikTokVideoCard> {
 
       if (_controller != null && _isInitialized) {
         await _controller!.play();
+        _startViewTimer();
       }
 
       return;
@@ -102,6 +132,8 @@ class _TikTokVideoCardState extends State<TikTokVideoCard> {
 
     if (!shouldBeVisible && _isVisible) {
       _isVisible = false;
+
+      _cancelViewTimer();
 
       if (_controller != null) {
         await _controller!.pause();
@@ -127,6 +159,7 @@ class _TikTokVideoCardState extends State<TikTokVideoCard> {
 
   @override
   void dispose() {
+    _cancelViewTimer();
     _controller?.pause();
     _controller?.dispose();
     super.dispose();

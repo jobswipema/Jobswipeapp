@@ -6,6 +6,7 @@ import 'package:jobswipe/features/profile/presentation/edit_candidate_profile_pa
 import 'package:jobswipe/shared/models/application_model.dart';
 import 'package:jobswipe/shared/providers/auth_provider.dart';
 import 'package:jobswipe/shared/services/cloudinary_service.dart';
+import 'package:jobswipe/features/profile/presentation/widgets/candidate_favorites_section.dart';
 
 class CandidateProfilePage extends ConsumerStatefulWidget {
   const CandidateProfilePage({super.key});
@@ -270,6 +271,16 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
                             statusColor: _statusColor(application.status),
                           );
                         }).toList(),
+                      const SizedBox(height: 30),
+                      const Text(
+                        'Offres favorites',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const CandidateFavoritesSection(),
                     ],
                   ),
                 );

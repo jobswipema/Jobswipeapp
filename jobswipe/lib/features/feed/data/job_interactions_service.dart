@@ -66,4 +66,31 @@ class JobInteractionsService {
       });
     }
   }
+
+  Future<void> registerView(String jobId) async {
+    final user = _auth.currentUser;
+
+    if (user == null) return;
+
+    final viewId = '${jobId}_${user.uid}';
+
+    final viewRef = _firestore.collection('job_views').doc(viewId);
+
+    final existing = await viewRef.get();
+
+    if (existing.exists) {
+      return;
+    }
+
+    await viewRef.set({
+      'jobId': jobId,
+      'candidateId': user.uid,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    await _firestore.collection('jobs').doc(jobId).update({
+      'viewsCount': FieldValue.increment(1),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
 }

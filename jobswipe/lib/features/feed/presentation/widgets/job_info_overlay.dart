@@ -131,8 +131,8 @@ class JobInfoOverlay extends ConsumerWidget {
                 ),
                 const SizedBox(height: 18),
                 _ActionButton(
-                  icon: Icons.work_outline,
-                  value: _formatCount(job.applicationsCount),
+                  icon: Icons.remove_red_eye,
+                  value: _formatCount(job.viewsCount),
                   isActive: false,
                   onTap: () {},
                 ),
