@@ -22,6 +22,29 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
 
   final List<String> _modes = const ['Téléphone', 'Présentiel', 'Visio'];
 
+  bool get _isReschedule => widget.candidateData['isReschedule'] == true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final scheduledAt = widget.candidateData['scheduledAt'];
+    if (scheduledAt is Timestamp) {
+      final date = scheduledAt.toDate();
+      _selectedDate = DateTime(date.year, date.month, date.day);
+      _selectedTime = TimeOfDay(hour: date.hour, minute: date.minute);
+    }
+
+    final mode = widget.candidateData['mode']?.toString() ?? '';
+    if (mode.trim().isNotEmpty && _modes.contains(mode)) {
+      _selectedMode = mode;
+    }
+
+    _locationOrLinkController.text =
+        widget.candidateData['locationOrLink']?.toString() ?? '';
+    _noteController.text = widget.candidateData['note']?.toString() ?? '';
+  }
+
   @override
   void dispose() {
     _locationOrLinkController.dispose();
@@ -34,7 +57,7 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
 
     final picked = await showDatePicker(
       context: context,
-      initialDate: now.add(const Duration(days: 1)),
+      initialDate: _selectedDate ?? now.add(const Duration(days: 1)),
       firstDate: now,
       lastDate: now.add(const Duration(days: 365)),
     );
@@ -47,7 +70,7 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: const TimeOfDay(hour: 9, minute: 0),
+      initialTime: _selectedTime ?? const TimeOfDay(hour: 9, minute: 0),
     );
 
     if (picked == null) return;
@@ -85,6 +108,7 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
     required String jobTitle,
     required DateTime scheduledAt,
     required String mode,
+    required bool isReschedule,
   }) async {
     final date =
         '${scheduledAt.day.toString().padLeft(2, '0')}/${scheduledAt.month.toString().padLeft(2, '0')}/${scheduledAt.year}';
@@ -93,9 +117,10 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
 
     await FirebaseFirestore.instance.collection('notifications').add({
       'userId': candidateId,
-      'title': 'Entretien planifié',
-      'message':
-          '$companyName a planifié un entretien pour "$jobTitle" le $date à $time. Mode : $mode.',
+      'title': isReschedule ? 'Entretien reporté' : 'Entretien planifié',
+      'message': isReschedule
+          ? '$companyName a reporté votre entretien pour "$jobTitle" au $date à $time. Mode : $mode.'
+          : '$companyName a planifié un entretien pour "$jobTitle" le $date à $time. Mode : $mode.',
       'type': 'application_status',
       'isRead': false,
       'createdAt': FieldValue.serverTimestamp(),
@@ -119,6 +144,7 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
     setState(() => _isSaving = true);
 
     try {
+      final interviewId = widget.candidateData['interviewId']?.toString() ?? '';
       final applicationId =
           widget.candidateData['applicationId']?.toString() ?? '';
       final candidateId = widget.candidateData['candidateId']?.toString() ?? '';
@@ -127,10 +153,13 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
       final jobTitle = widget.candidateData['jobTitle']?.toString() ?? '';
       final companyName =
           widget.candidateData['companyName']?.toString() ?? 'Entreprise';
+      final candidateName =
+          widget.candidateData['fullName']?.toString() ?? 'Candidat';
 
-      await FirebaseFirestore.instance.collection('interviews').add({
+      final interviewData = {
         'applicationId': applicationId,
         'candidateId': candidateId,
+        'candidateName': candidateName,
         'companyId': companyId,
         'jobId': jobId,
         'jobTitle': jobTitle,
@@ -139,17 +168,31 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
         'mode': _selectedMode,
         'locationOrLink': _locationOrLinkController.text.trim(),
         'note': _noteController.text.trim(),
-        'createdAt': FieldValue.serverTimestamp(),
+        'status': 'planned',
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      };
 
-      await FirebaseFirestore.instance
-          .collection('applications')
-          .doc(applicationId)
-          .update({
-            'status': 'interview',
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
+      if (_isReschedule && interviewId.isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('interviews')
+            .doc(interviewId)
+            .update(interviewData);
+      } else {
+        await FirebaseFirestore.instance.collection('interviews').add({
+          ...interviewData,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      if (applicationId.isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('applications')
+            .doc(applicationId)
+            .update({
+              'status': 'interview',
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+      }
 
       await _createNotification(
         candidateId: candidateId,
@@ -157,12 +200,19 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
         jobTitle: jobTitle,
         scheduledAt: scheduledAt,
         mode: _selectedMode,
+        isReschedule: _isReschedule,
       );
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entretien planifié avec succès.')),
+        SnackBar(
+          content: Text(
+            _isReschedule
+                ? 'Entretien reporté avec succès.'
+                : 'Entretien planifié avec succès.',
+          ),
+        ),
       );
 
       Navigator.of(context).pop();
@@ -170,7 +220,7 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur lors de la planification : $e')),
+        SnackBar(content: Text('Erreur lors de l’enregistrement : $e')),
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -186,7 +236,11 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
         widget.candidateData['companyName']?.toString() ?? 'Entreprise';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Planifier entretien')),
+      appBar: AppBar(
+        title: Text(
+          _isReschedule ? 'Reporter entretien' : 'Planifier entretien',
+        ),
+      ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(18, 8, 18, 18),
         child: SizedBox(
@@ -201,7 +255,11 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
                   )
                 : const Icon(Icons.event_available),
             label: Text(
-              _isSaving ? 'Planification...' : 'Planifier l’entretien',
+              _isSaving
+                  ? 'Enregistrement...'
+                  : _isReschedule
+                  ? 'Reporter l’entretien'
+                  : 'Planifier l’entretien',
             ),
           ),
         ),
@@ -218,9 +276,7 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
                   jobTitle: jobTitle,
                   companyName: companyName,
                 ),
-
                 const SizedBox(height: 20),
-
                 _SectionCard(
                   title: 'Créneau',
                   icon: Icons.schedule,
@@ -244,9 +300,7 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
                 _SectionCard(
                   title: 'Mode',
                   icon: Icons.meeting_room_outlined,
@@ -271,9 +325,7 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
                     }).toList(),
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
                 _SectionCard(
                   title: _selectedMode == 'Présentiel'
                       ? 'Lieu'
@@ -309,9 +361,7 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
                     },
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
                 _SectionCard(
                   title: 'Instructions',
                   icon: Icons.notes_outlined,

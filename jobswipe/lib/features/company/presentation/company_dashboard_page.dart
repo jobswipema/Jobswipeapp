@@ -4,11 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jobswipe/core/enums/verification_status.dart';
 import 'package:jobswipe/features/company/data/company_dashboard_provider.dart';
 import 'package:jobswipe/features/company/presentation/company_applications_page.dart';
+import 'package:jobswipe/features/company/presentation/company_interviews_page.dart';
 import 'package:jobswipe/features/company/presentation/create_job_page.dart';
 import 'package:jobswipe/shared/models/application_model.dart';
 import 'package:jobswipe/shared/models/job_offer.dart';
 import 'package:jobswipe/shared/providers/auth_provider.dart';
-import 'package:jobswipe/features/company/presentation/company_interviews_page.dart';
 
 class CompanyDashboardPage extends ConsumerWidget {
   const CompanyDashboardPage({super.key});
@@ -73,7 +73,7 @@ class CompanyDashboardPage extends ConsumerWidget {
             final interviewsCount = interviewsSnapshot.data?.docs.length ?? 0;
 
             return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 28),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -83,44 +83,10 @@ class CompanyDashboardPage extends ConsumerWidget {
                     statusColor: statusColor,
                     statusIcon: statusIcon,
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 16),
                   _VerificationCard(isVerified: isVerified),
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton.icon(
-                      onPressed: isVerified
-                          ? () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const CreateJobPage(),
-                                ),
-                              );
-                            }
-                          : null,
-                      icon: const Icon(Icons.add_business_outlined),
-                      label: const Text('Ajouter une offre'),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 22),
 
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const CompanyInterviewsPage(),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.event_available),
-                      label: const Text('Voir les entretiens planifiés'),
-                    ),
-                  ),
-                  const SizedBox(height: 26),
                   applicationsAsync.when(
                     loading: () => const _DashboardLoading(),
                     error: (error, _) => _ErrorCard(
@@ -142,53 +108,14 @@ class CompanyDashboardPage extends ConsumerWidget {
                             0,
                             (sum, job) => sum + job.viewsCount,
                           );
-                          final totalLikes = jobs.fold<int>(
-                            0,
-                            (sum, job) => sum + job.likesCount,
-                          );
-                          final totalFavorites = jobs.fold<int>(
-                            0,
-                            (sum, job) => sum + job.favoritesCount,
-                          );
-
-                          final received = applications
-                              .where((a) => a.status == 'submitted')
-                              .length;
-                          final reviewing = applications
-                              .where((a) => a.status == 'reviewing')
-                              .length;
-                          final interview = applications
-                              .where((a) => a.status == 'interview')
-                              .length;
-                          final accepted = applications
-                              .where((a) => a.status == 'accepted')
-                              .length;
-                          final rejected = applications
-                              .where((a) => a.status == 'rejected')
-                              .length;
-
-                          final conversionRate = totalViews == 0
-                              ? 0
-                              : ((totalApplications / totalViews) * 100);
-
-                          final sortedJobs = [...jobs];
-                          sortedJobs.sort((a, b) {
-                            final aScore =
-                                a.viewsCount + a.applicationsCount * 5;
-                            final bScore =
-                                b.viewsCount + b.applicationsCount * 5;
-                            return bScore.compareTo(aScore);
-                          });
-
-                          final topJobs = sortedJobs.take(3).toList();
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Tableau de bord',
+                                'Vue rapide',
                                 style: TextStyle(
-                                  fontSize: 26,
+                                  fontSize: 25,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -199,7 +126,7 @@ class CompanyDashboardPage extends ConsumerWidget {
                                 physics: const NeverScrollableScrollPhysics(),
                                 crossAxisSpacing: 12,
                                 mainAxisSpacing: 12,
-                                childAspectRatio: 1.35,
+                                childAspectRatio: 1.38,
                                 children: [
                                   _StatCard(
                                     title: 'Offres actives',
@@ -227,60 +154,20 @@ class CompanyDashboardPage extends ConsumerWidget {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 16),
-                              _AnalyticsCard(
-                                title: 'Engagement',
-                                icon: Icons.trending_up,
-                                children: [
-                                  _MetricLine(
-                                    label: 'Likes',
-                                    value: totalLikes.toString(),
-                                  ),
-                                  _MetricLine(
-                                    label: 'Favoris',
-                                    value: totalFavorites.toString(),
-                                  ),
-                                  _MetricLine(
-                                    label: 'Taux candidature / vues',
-                                    value:
-                                        '${conversionRate.toStringAsFixed(1)}%',
-                                  ),
-                                ],
+                              const SizedBox(height: 24),
+                              const Text(
+                                'Menu entreprise',
+                                style: TextStyle(
+                                  fontSize: 25,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                              const SizedBox(height: 16),
-                              _AnalyticsCard(
-                                title: 'Funnel recrutement',
-                                icon: Icons.account_tree_outlined,
-                                children: [
-                                  _MetricLine(
-                                    label: 'Reçues',
-                                    value: received.toString(),
-                                  ),
-                                  _MetricLine(
-                                    label: 'En analyse',
-                                    value: reviewing.toString(),
-                                  ),
-                                  _MetricLine(
-                                    label: 'Entretien',
-                                    value: interview.toString(),
-                                  ),
-                                  _MetricLine(
-                                    label: 'Acceptées',
-                                    value: accepted.toString(),
-                                  ),
-                                  _MetricLine(
-                                    label: 'Refusées',
-                                    value: rejected.toString(),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-                              _TopJobsSection(
-                                jobs: topJobs,
+                              const SizedBox(height: 14),
+                              _MenuGrid(
+                                isVerified: isVerified,
+                                jobs: jobs,
                                 applications: applications,
                               ),
-                              const SizedBox(height: 22),
-                              _JobsList(jobs: jobs, applications: applications),
                             ],
                           );
                         },
@@ -291,6 +178,313 @@ class CompanyDashboardPage extends ConsumerWidget {
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuGrid extends StatelessWidget {
+  final bool isVerified;
+  final List<JobOffer> jobs;
+  final List<ApplicationModel> applications;
+
+  const _MenuGrid({
+    required this.isVerified,
+    required this.jobs,
+    required this.applications,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _MenuCard(
+          title: 'Publier une offre',
+          subtitle: 'Créer une nouvelle annonce vidéo',
+          icon: Icons.add_business_outlined,
+          color: Colors.blueAccent,
+          enabled: isVerified,
+          onTap: () {
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const CreateJobPage()));
+          },
+        ),
+        const SizedBox(height: 12),
+        _MenuCard(
+          title: 'Entretiens planifiés',
+          subtitle: 'Voir le calendrier RH',
+          icon: Icons.event_available,
+          color: Colors.amberAccent,
+          enabled: true,
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const CompanyInterviewsPage()),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _MenuCard(
+          title: 'Mes offres',
+          subtitle: 'Gérer les offres et candidatures',
+          icon: Icons.work_outline,
+          color: Colors.greenAccent,
+          enabled: true,
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    CompanyJobsPage(jobs: jobs, applications: applications),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _MenuCard(
+          title: 'Analytics détaillés',
+          subtitle: 'Performance, funnel et engagement',
+          icon: Icons.analytics_outlined,
+          color: Colors.purpleAccent,
+          enabled: true,
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => CompanyAnalyticsPage(
+                  jobs: jobs,
+                  applications: applications,
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class CompanyJobsPage extends StatelessWidget {
+  final List<JobOffer> jobs;
+  final List<ApplicationModel> applications;
+
+  const CompanyJobsPage({
+    super.key,
+    required this.jobs,
+    required this.applications,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Mes offres')),
+      body: SafeArea(
+        child: jobs.isEmpty
+            ? const Center(child: Text('Aucune offre publiée pour le moment.'))
+            : ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+                children: [
+                  Text(
+                    '${jobs.length} offre(s) publiée(s)',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.65),
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  ...jobs.map((job) {
+                    final jobApplications = applications
+                        .where((app) => app.jobId == job.id)
+                        .toList();
+
+                    return _JobCard(
+                      job: job,
+                      applicationsCount: jobApplications.length,
+                    );
+                  }),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _JobCard extends StatelessWidget {
+  final JobOffer job;
+  final int applicationsCount;
+
+  const _JobCard({required this.job, required this.applicationsCount});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161D2E),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            job.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${job.location} • ${job.contractType} • ${job.experience}',
+            style: TextStyle(color: Colors.white.withOpacity(0.68)),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _MiniPill(
+                label: '$applicationsCount candidature(s)',
+                icon: Icons.people_outline,
+              ),
+              _MiniPill(
+                label: '${job.viewsCount} vues',
+                icon: Icons.visibility_outlined,
+              ),
+              _MiniPill(
+                label: '${job.favoritesCount} favoris',
+                icon: Icons.bookmark_outline,
+              ),
+              _MiniPill(
+                label: job.isActive ? 'Active' : 'Inactive',
+                icon: job.isActive
+                    ? Icons.check_circle_outline
+                    : Icons.pause_circle_outline,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => CompanyApplicationsPage(job: job),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.visibility_outlined),
+              label: const Text('Voir les candidatures'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CompanyAnalyticsPage extends StatelessWidget {
+  final List<JobOffer> jobs;
+  final List<ApplicationModel> applications;
+
+  const CompanyAnalyticsPage({
+    super.key,
+    required this.jobs,
+    required this.applications,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final totalApplications = applications.length;
+
+    final totalViews = jobs.fold<int>(0, (sum, job) => sum + job.viewsCount);
+
+    final totalLikes = jobs.fold<int>(0, (sum, job) => sum + job.likesCount);
+
+    final totalFavorites = jobs.fold<int>(
+      0,
+      (sum, job) => sum + job.favoritesCount,
+    );
+
+    final conversionRate = totalViews == 0
+        ? 0
+        : ((totalApplications / totalViews) * 100);
+
+    final received = applications.where((a) => a.status == 'submitted').length;
+    final reviewing = applications.where((a) => a.status == 'reviewing').length;
+    final interview = applications.where((a) => a.status == 'interview').length;
+    final accepted = applications.where((a) => a.status == 'accepted').length;
+    final rejected = applications.where((a) => a.status == 'rejected').length;
+
+    final sortedJobs = [...jobs];
+    sortedJobs.sort((a, b) {
+      final aScore = a.viewsCount + a.applicationsCount * 5;
+      final bScore = b.viewsCount + b.applicationsCount * 5;
+      return bScore.compareTo(aScore);
+    });
+
+    final topJobs = sortedJobs.take(3).toList();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Analytics')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+          children: [
+            const Text(
+              'Performance recrutement',
+              style: TextStyle(fontSize: 29, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 18),
+            _AnalyticsCard(
+              title: 'Engagement',
+              icon: Icons.trending_up,
+              children: [
+                _MetricLine(label: 'Vues', value: totalViews.toString()),
+                _MetricLine(label: 'Likes', value: totalLikes.toString()),
+                _MetricLine(label: 'Favoris', value: totalFavorites.toString()),
+                _MetricLine(
+                  label: 'Taux candidature / vues',
+                  value: '${conversionRate.toStringAsFixed(1)}%',
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _AnalyticsCard(
+              title: 'Funnel recrutement',
+              icon: Icons.account_tree_outlined,
+              children: [
+                _MetricLine(label: 'Reçues', value: received.toString()),
+                _MetricLine(label: 'En analyse', value: reviewing.toString()),
+                _MetricLine(label: 'Entretien', value: interview.toString()),
+                _MetricLine(label: 'Acceptées', value: accepted.toString()),
+                _MetricLine(label: 'Refusées', value: rejected.toString()),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (topJobs.isNotEmpty)
+              _AnalyticsCard(
+                title: 'Top offres',
+                icon: Icons.emoji_events_outlined,
+                children: topJobs.map((job) {
+                  final count = applications
+                      .where((a) => a.jobId == job.id)
+                      .length;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _JobPerformanceLine(
+                      title: job.title,
+                      views: job.viewsCount,
+                      applications: count,
+                      favorites: job.favoritesCount,
+                    ),
+                  );
+                }).toList(),
+              ),
+          ],
         ),
       ),
     );
@@ -403,186 +597,77 @@ class _VerificationCard extends StatelessWidget {
   }
 }
 
-class _TopJobsSection extends StatelessWidget {
-  final List<JobOffer> jobs;
-  final List<ApplicationModel> applications;
-
-  const _TopJobsSection({required this.jobs, required this.applications});
-
-  @override
-  Widget build(BuildContext context) {
-    if (jobs.isEmpty) return const SizedBox.shrink();
-
-    return _AnalyticsCard(
-      title: 'Offres les plus performantes',
-      icon: Icons.emoji_events_outlined,
-      children: jobs.map((job) {
-        final count = applications.where((a) => a.jobId == job.id).length;
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: _JobPerformanceLine(
-            title: job.title,
-            views: job.viewsCount,
-            applications: count,
-            favorites: job.favoritesCount,
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-class _JobPerformanceLine extends StatelessWidget {
+class _MenuCard extends StatelessWidget {
   final String title;
-  final int views;
-  final int applications;
-  final int favorites;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final bool enabled;
+  final VoidCallback onTap;
 
-  const _JobPerformanceLine({
+  const _MenuCard({
     required this.title,
-    required this.views,
-    required this.applications,
-    required this.favorites,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.enabled,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1626),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w800),
+    return Opacity(
+      opacity: enabled ? 1 : 0.45,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: enabled ? onTap : null,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(17),
+          decoration: BoxDecoration(
+            color: const Color(0xFF161D2E),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: Colors.white10),
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          child: Row(
             children: [
-              _MiniPill(label: '$views vues', icon: Icons.visibility_outlined),
-              _MiniPill(
-                label: '$applications candidatures',
-                icon: Icons.people_outline,
-              ),
-              _MiniPill(
-                label: '$favorites favoris',
-                icon: Icons.bookmark_outline,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _JobsList extends StatelessWidget {
-  final List<JobOffer> jobs;
-  final List<ApplicationModel> applications;
-
-  const _JobsList({required this.jobs, required this.applications});
-
-  @override
-  Widget build(BuildContext context) {
-    if (jobs.isEmpty) {
-      return _AnalyticsCard(
-        title: 'Mes offres',
-        icon: Icons.work_outline,
-        children: const [Text('Aucune offre publiée pour le moment.')],
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Mes offres',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 14),
-        ...jobs.map((job) {
-          final jobApplications = applications
-              .where((app) => app.jobId == job.id)
-              .toList();
-
-          return Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF161D2E),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white10),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  job.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  '${job.location} • ${job.contractType} • ${job.experience}',
-                  style: TextStyle(color: Colors.white.withOpacity(0.68)),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                child: Icon(icon, color: color),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _MiniPill(
-                      label: '${jobApplications.length} candidature(s)',
-                      icon: Icons.people_outline,
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                    _MiniPill(
-                      label: '${job.viewsCount} vues',
-                      icon: Icons.visibility_outlined,
-                    ),
-                    _MiniPill(
-                      label: job.isActive ? 'Active' : 'Inactive',
-                      icon: job.isActive
-                          ? Icons.check_circle_outline
-                          : Icons.pause_circle_outline,
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.58),
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  height: 46,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => CompanyApplicationsPage(job: job),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.visibility_outlined),
-                    label: const Text('Voir les candidatures'),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
-      ],
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white54),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -653,6 +738,59 @@ class _MetricLine extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _JobPerformanceLine extends StatelessWidget {
+  final String title;
+  final int views;
+  final int applications;
+  final int favorites;
+
+  const _JobPerformanceLine({
+    required this.title,
+    required this.views,
+    required this.applications,
+    required this.favorites,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1626),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _MiniPill(label: '$views vues', icon: Icons.visibility_outlined),
+              _MiniPill(
+                label: '$applications candidatures',
+                icon: Icons.people_outline,
+              ),
+              _MiniPill(
+                label: '$favorites favoris',
+                icon: Icons.bookmark_outline,
+              ),
+            ],
           ),
         ],
       ),

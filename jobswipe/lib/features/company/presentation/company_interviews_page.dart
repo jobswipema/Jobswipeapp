@@ -1,7 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:jobswipe/shared/providers/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jobswipe/features/company/presentation/schedule_interview_page.dart';
+import 'package:jobswipe/shared/providers/auth_provider.dart';
 
 class CompanyInterviewsPage extends ConsumerWidget {
   const CompanyInterviewsPage({super.key});
@@ -17,7 +18,6 @@ class CompanyInterviewsPage extends ConsumerWidget {
 
   String _formatDate(Timestamp? timestamp) {
     if (timestamp == null) return 'Date non définie';
-
     final date = timestamp.toDate();
 
     return '${date.day.toString().padLeft(2, '0')}/'
@@ -27,28 +27,125 @@ class CompanyInterviewsPage extends ConsumerWidget {
 
   String _formatTime(Timestamp? timestamp) {
     if (timestamp == null) return '--:--';
-
     final date = timestamp.toDate();
 
     return '${date.hour.toString().padLeft(2, '0')}:'
         '${date.minute.toString().padLeft(2, '0')}';
   }
 
-  Future<void> _updateInterviewStatus(
+  String _dateTimeForMessage(Timestamp? timestamp) {
+    if (timestamp == null) return '';
+    return '${_formatDate(timestamp)} à ${_formatTime(timestamp)}';
+  }
+
+  Future<void> _createNotification({
+    required String candidateId,
+    required String title,
+    required String message,
+  }) async {
+    if (candidateId.trim().isEmpty) return;
+
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'userId': candidateId,
+      'title': title,
+      'message': message,
+      'type': 'application_status',
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> _markDone(
     BuildContext context,
-    String interviewId,
-    String status,
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) async {
+    final data = doc.data();
+
     await FirebaseFirestore.instance
         .collection('interviews')
-        .doc(interviewId)
-        .update({'status': status, 'updatedAt': FieldValue.serverTimestamp()});
+        .doc(doc.id)
+        .update({'status': 'done', 'updatedAt': FieldValue.serverTimestamp()});
+
+    await _createNotification(
+      candidateId: data['candidateId']?.toString() ?? '',
+      title: 'Entretien terminé',
+      message:
+          '${data['companyName'] ?? 'Entreprise'} a marqué votre entretien pour "${data['jobTitle'] ?? 'le poste'}" comme terminé.',
+    );
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Entretien marqué comme terminé.')),
+      );
+    }
+  }
+
+  Future<void> _cancelInterview(
+    BuildContext context,
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
+    final data = doc.data();
+    final applicationId = data['applicationId']?.toString() ?? '';
+
+    await FirebaseFirestore.instance
+        .collection('interviews')
+        .doc(doc.id)
+        .update({
+          'status': 'cancelled',
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+    if (applicationId.isNotEmpty) {
+      await FirebaseFirestore.instance
+          .collection('applications')
+          .doc(applicationId)
+          .update({
+            'status': 'reviewing',
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+    }
+
+    await _createNotification(
+      candidateId: data['candidateId']?.toString() ?? '',
+      title: 'Entretien annulé',
+      message:
+          '${data['companyName'] ?? 'Entreprise'} a annulé votre entretien pour "${data['jobTitle'] ?? 'le poste'}".',
+    );
 
     if (context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Entretien mis à jour.')));
+      ).showSnackBar(const SnackBar(content: Text('Entretien annulé.')));
     }
+  }
+
+  Future<void> _postponeInterview(
+    BuildContext context,
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
+    final data = doc.data();
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ScheduleInterviewPage(
+          candidateData: {
+            'interviewId': doc.id,
+            'applicationId': data['applicationId']?.toString() ?? '',
+            'candidateId': data['candidateId']?.toString() ?? '',
+            'companyId': data['companyId']?.toString() ?? '',
+            'jobId': data['jobId']?.toString() ?? '',
+            'jobTitle': data['jobTitle']?.toString() ?? '',
+            'companyName': data['companyName']?.toString() ?? 'Entreprise',
+            'fullName': data['candidateName']?.toString() ?? 'Candidat',
+            'scheduledAt': data['scheduledAt'],
+            'mode': data['mode']?.toString() ?? 'Téléphone',
+            'locationOrLink': data['locationOrLink']?.toString() ?? '',
+            'note': data['note']?.toString() ?? '',
+            'isReschedule': true,
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -71,9 +168,7 @@ class CompanyInterviewsPage extends ConsumerWidget {
               return const Center(child: CircularProgressIndicator());
             }
 
-            final docs = snapshot.data!.docs;
-
-            final interviews = [...docs];
+            final interviews = [...snapshot.data!.docs];
 
             interviews.sort((a, b) {
               final aDate = a.data()['scheduledAt'];
@@ -128,10 +223,9 @@ class CompanyInterviewsPage extends ConsumerWidget {
                     status: data['status']?.toString() ?? 'planned',
                     date: _formatDate(data['scheduledAt']),
                     time: _formatTime(data['scheduledAt']),
-                    onDone: () =>
-                        _updateInterviewStatus(context, doc.id, 'done'),
-                    onCancel: () =>
-                        _updateInterviewStatus(context, doc.id, 'cancelled'),
+                    onDone: () => _markDone(context, doc),
+                    onCancel: () => _cancelInterview(context, doc),
+                    onPostpone: () => _postponeInterview(context, doc),
                   );
                 }),
               ],
@@ -154,6 +248,7 @@ class _InterviewCard extends StatelessWidget {
   final String time;
   final VoidCallback onDone;
   final VoidCallback onCancel;
+  final VoidCallback onPostpone;
 
   const _InterviewCard({
     required this.candidateName,
@@ -166,6 +261,7 @@ class _InterviewCard extends StatelessWidget {
     required this.time,
     required this.onDone,
     required this.onCancel,
+    required this.onPostpone,
   });
 
   Color _statusColor() {
@@ -191,6 +287,8 @@ class _InterviewCard extends StatelessWidget {
         return 'Planifié';
     }
   }
+
+  bool get _isClosed => status == 'done' || status == 'cancelled';
 
   @override
   Widget build(BuildContext context) {
@@ -276,7 +374,7 @@ class _InterviewCard extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: status == 'done' ? null : onDone,
+                  onPressed: _isClosed ? null : onDone,
                   icon: const Icon(Icons.check_circle_outline),
                   label: const Text('Terminé'),
                 ),
@@ -284,12 +382,22 @@ class _InterviewCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: status == 'cancelled' ? null : onCancel,
-                  icon: const Icon(Icons.close),
-                  label: const Text('Annuler'),
+                  onPressed: _isClosed ? null : onPostpone,
+                  icon: const Icon(Icons.edit_calendar_outlined),
+                  label: const Text('Reporter'),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: OutlinedButton.icon(
+              onPressed: _isClosed ? null : onCancel,
+              icon: const Icon(Icons.close),
+              label: const Text('Annuler l’entretien'),
+            ),
           ),
         ],
       ),
