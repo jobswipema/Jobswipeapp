@@ -50,6 +50,12 @@ class ApplicationsService {
       'candidateEmail': candidateEmail,
       'candidateCvUrl': candidateCvUrl,
       'candidateCvFileName': candidateCvFileName,
+      'candidatePhone': candidateData['phone']?.toString() ?? '',
+      'candidateCity': candidateData['city']?.toString() ?? '',
+      'candidateBio': candidateData['bio']?.toString() ?? '',
+      'candidateSkills': candidateData['skills'] is List
+          ? (candidateData['skills'] as List).join(', ')
+          : candidateData['skills']?.toString() ?? '',
       'companyId': job.companyId,
       'companyName': job.companyName,
       'jobTitle': job.title,

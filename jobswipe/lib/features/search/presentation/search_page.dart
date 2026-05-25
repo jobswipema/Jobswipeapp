@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:jobswipe/features/feed/presentation/single_job_video_page.dart';
 import 'package:jobswipe/shared/models/job_offer.dart';
 
 class SearchPage extends StatefulWidget {
@@ -81,6 +82,12 @@ class _SearchPageState extends State<SearchPage> {
 
           return jobs;
         });
+  }
+
+  void _openJobVideo(JobOffer job) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => SingleJobVideoPage(job: job)),
+    );
   }
 
   @override
@@ -192,7 +199,10 @@ class _SearchPageState extends State<SearchPage> {
                     sliver: SliverList.builder(
                       itemCount: jobs.length,
                       itemBuilder: (context, index) {
-                        return _SearchJobCard(job: jobs[index]);
+                        return _SearchJobCard(
+                          job: jobs[index],
+                          onTap: () => _openJobVideo(jobs[index]),
+                        );
                       },
                     ),
                   ),
@@ -207,57 +217,62 @@ class _SearchPageState extends State<SearchPage> {
 
 class _SearchJobCard extends StatelessWidget {
   final JobOffer job;
+  final VoidCallback onTap;
 
-  const _SearchJobCard({required this.job});
+  const _SearchJobCard({required this.job, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF161D2E),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            job.title,
-            style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${job.companyName} • ${job.location}',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.72),
-              fontSize: 15,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _Pill(label: job.contractType),
-              _Pill(label: job.experience),
-              _Pill(label: job.salary),
-            ],
-          ),
-          if (job.description.trim().isNotEmpty) ...[
-            const SizedBox(height: 12),
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFF161D2E),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              job.description,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+              job.title,
+              style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${job.companyName} • ${job.location}',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.68),
-                height: 1.35,
+                color: Colors.white.withOpacity(0.72),
+                fontSize: 15,
               ),
             ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _Pill(label: job.contractType),
+                _Pill(label: job.experience),
+                _Pill(label: job.salary),
+              ],
+            ),
+            if (job.description.trim().isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                job.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.68),
+                  height: 1.35,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

@@ -13,6 +13,10 @@ class ApplicationModel {
   final String jobTitle;
   final String status;
   final DateTime? createdAt;
+  final String candidatePhone;
+  final String candidateCity;
+  final String candidateBio;
+  final String candidateSkills;
 
   const ApplicationModel({
     required this.id,
@@ -27,6 +31,10 @@ class ApplicationModel {
     required this.jobTitle,
     required this.status,
     required this.createdAt,
+    required this.candidatePhone,
+    required this.candidateCity,
+    required this.candidateBio,
+    required this.candidateSkills,
   });
 
   factory ApplicationModel.fromFirestore(DocumentSnapshot doc) {
@@ -47,6 +55,10 @@ class ApplicationModel {
       createdAt: data['createdAt'] is Timestamp
           ? (data['createdAt'] as Timestamp).toDate()
           : null,
+      candidatePhone: data['candidatePhone'] ?? '',
+      candidateCity: data['candidateCity'] ?? '',
+      candidateBio: data['candidateBio'] ?? '',
+      candidateSkills: data['candidateSkills'] ?? '',
     );
   }
 }

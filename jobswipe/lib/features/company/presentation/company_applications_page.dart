@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:jobswipe/shared/models/application_model.dart';
 import 'package:jobswipe/shared/models/job_offer.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'candidate_details_page.dart';
 
 class CompanyApplicationsPage extends StatelessWidget {
   final JobOffer job;
@@ -43,9 +44,10 @@ class CompanyApplicationsPage extends StatelessWidget {
       return;
     }
 
-    final uri = Uri.parse(cvUrl);
-
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final launched = await launchUrl(
+      Uri.parse(cvUrl),
+      mode: LaunchMode.externalApplication,
+    );
 
     if (!launched && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -54,15 +56,47 @@ class CompanyApplicationsPage extends StatelessWidget {
     }
   }
 
+  Future<void> _createStatusNotification({
+    required String candidateId,
+    required String jobTitle,
+    required String companyName,
+    required String status,
+  }) async {
+    final statusLabel = switch (status) {
+      'reviewing' => 'en analyse',
+      'interview' => 'passée en entretien',
+      'accepted' => 'acceptée',
+      'rejected' => 'refusée',
+      _ => 'reçue',
+    };
+
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'userId': candidateId,
+      'title': 'Mise à jour de candidature',
+      'message':
+          '$companyName a mis à jour votre candidature pour "$jobTitle" : $statusLabel.',
+      'type': 'application_status',
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<void> _updateStatus(
     BuildContext context,
-    String applicationId,
+    ApplicationModel application,
     String status,
   ) async {
     await FirebaseFirestore.instance
         .collection('applications')
-        .doc(applicationId)
+        .doc(application.id)
         .update({'status': status, 'updatedAt': FieldValue.serverTimestamp()});
+
+    await _createStatusNotification(
+      candidateId: application.candidateId,
+      jobTitle: application.jobTitle,
+      companyName: application.companyName,
+      status: status,
+    );
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -81,7 +115,6 @@ class CompanyApplicationsPage extends StatelessWidget {
         return 'Acceptée';
       case 'rejected':
         return 'Refusée';
-      case 'submitted':
       default:
         return 'Reçue';
     }
@@ -97,10 +130,38 @@ class CompanyApplicationsPage extends StatelessWidget {
         return Colors.greenAccent;
       case 'rejected':
         return Colors.redAccent;
-      case 'submitted':
       default:
         return Colors.white70;
     }
+  }
+
+  void _openCandidateProfile(
+    BuildContext context,
+    ApplicationModel application,
+  ) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CandidateDetailsPage(
+          candidateData: {
+            'applicationId': application.id,
+            'candidateId': application.candidateId,
+            'companyId': application.companyId,
+            'jobId': application.jobId,
+            'jobTitle': application.jobTitle,
+            'companyName': application.companyName,
+            'status': application.status,
+            'fullName': application.candidateName,
+            'email': application.candidateEmail,
+            'phone': application.candidatePhone,
+            'city': application.candidateCity,
+            'bio': application.candidateBio,
+            'skills': application.candidateSkills,
+            'candidateCvUrl': application.candidateCvUrl,
+            'candidateCvFileName': application.candidateCvFileName,
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -231,6 +292,17 @@ class CompanyApplicationsPage extends StatelessWidget {
                           SizedBox(
                             width: double.infinity,
                             height: 46,
+                            child: ElevatedButton.icon(
+                              onPressed: () =>
+                                  _openCandidateProfile(context, application),
+                              icon: const Icon(Icons.person_search_outlined),
+                              label: const Text('Voir le profil candidat'),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 46,
                             child: OutlinedButton.icon(
                               onPressed: hasCv
                                   ? () => _openCv(
@@ -264,7 +336,7 @@ class CompanyApplicationsPage extends StatelessWidget {
                                 label: 'Analyse',
                                 onPressed: () => _updateStatus(
                                   context,
-                                  application.id,
+                                  application,
                                   'reviewing',
                                 ),
                               ),
@@ -272,7 +344,7 @@ class CompanyApplicationsPage extends StatelessWidget {
                                 label: 'Entretien',
                                 onPressed: () => _updateStatus(
                                   context,
-                                  application.id,
+                                  application,
                                   'interview',
                                 ),
                               ),
@@ -280,7 +352,7 @@ class CompanyApplicationsPage extends StatelessWidget {
                                 label: 'Accepter',
                                 onPressed: () => _updateStatus(
                                   context,
-                                  application.id,
+                                  application,
                                   'accepted',
                                 ),
                               ),
@@ -288,7 +360,7 @@ class CompanyApplicationsPage extends StatelessWidget {
                                 label: 'Refuser',
                                 onPressed: () => _updateStatus(
                                   context,
-                                  application.id,
+                                  application,
                                   'rejected',
                                 ),
                               ),

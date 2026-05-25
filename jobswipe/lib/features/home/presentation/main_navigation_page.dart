@@ -6,6 +6,7 @@ import 'package:jobswipe/features/feed/presentation/feed_page.dart';
 import 'package:jobswipe/features/profile/presentation/candidate_profile_page.dart';
 import 'package:jobswipe/shared/providers/auth_provider.dart';
 import 'package:jobswipe/features/search/presentation/search_page.dart';
+import 'package:jobswipe/features/notifications/presentation/notifications_page.dart';
 
 class MainNavigationPage extends ConsumerStatefulWidget {
   const MainNavigationPage({super.key});
@@ -40,7 +41,7 @@ class _MainNavigationPageState extends ConsumerState<MainNavigationPage> {
         const FeedPage(),
         const SearchPage(),
         _placeholderPage('Publier une offre'),
-        _placeholderPage('Messagess'),
+        const NotificationsPage(),
         _placeholderPage('Profil entreprise'),
       ];
     }
@@ -48,7 +49,7 @@ class _MainNavigationPageState extends ConsumerState<MainNavigationPage> {
     return [
       const FeedPage(),
       const SearchPage(),
-      _placeholderPage('Messagess'),
+      const NotificationsPage(),
       const CandidateProfilePage(),
     ];
   }
