@@ -68,10 +68,31 @@ class CandidateDetailsPage extends StatelessWidget {
       return;
     }
 
+    final updateData = <String, dynamic>{
+      'status': status,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (status == 'reviewing') {
+      updateData['reviewingAt'] = FieldValue.serverTimestamp();
+    }
+
+    if (status == 'interview') {
+      updateData['interviewAt'] = FieldValue.serverTimestamp();
+    }
+
+    if (status == 'accepted') {
+      updateData['acceptedAt'] = FieldValue.serverTimestamp();
+    }
+
+    if (status == 'rejected') {
+      updateData['rejectedAt'] = FieldValue.serverTimestamp();
+    }
+
     await FirebaseFirestore.instance
         .collection('applications')
         .doc(applicationId)
-        .update({'status': status, 'updatedAt': FieldValue.serverTimestamp()});
+        .update(updateData);
 
     await _createStatusNotification(
       candidateId: candidateId,

@@ -190,6 +190,7 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
             .doc(applicationId)
             .update({
               'status': 'interview',
+              'interviewAt': FieldValue.serverTimestamp(),
               'updatedAt': FieldValue.serverTimestamp(),
             });
       }

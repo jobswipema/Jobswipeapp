@@ -86,10 +86,31 @@ class CompanyApplicationsPage extends StatelessWidget {
     ApplicationModel application,
     String status,
   ) async {
+    final updateData = <String, dynamic>{
+      'status': status,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (status == 'reviewing') {
+      updateData['reviewingAt'] = FieldValue.serverTimestamp();
+    }
+
+    if (status == 'interview') {
+      updateData['interviewAt'] = FieldValue.serverTimestamp();
+    }
+
+    if (status == 'accepted') {
+      updateData['acceptedAt'] = FieldValue.serverTimestamp();
+    }
+
+    if (status == 'rejected') {
+      updateData['rejectedAt'] = FieldValue.serverTimestamp();
+    }
+
     await FirebaseFirestore.instance
         .collection('applications')
         .doc(application.id)
-        .update({'status': status, 'updatedAt': FieldValue.serverTimestamp()});
+        .update(updateData);
 
     await _createStatusNotification(
       candidateId: application.candidateId,

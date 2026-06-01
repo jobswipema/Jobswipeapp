@@ -60,6 +60,7 @@ class ApplicationsService {
       'companyName': job.companyName,
       'jobTitle': job.title,
       'status': 'submitted',
+      'submittedAt': FieldValue.serverTimestamp(),
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });

@@ -1,23 +1,24 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:jobswipe/features/company/presentation/schedule_interview_page.dart';
 import 'package:jobswipe/shared/providers/auth_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class CompanyInterviewsPage extends ConsumerWidget {
-  const CompanyInterviewsPage({super.key});
+class CandidateInterviewsPage extends ConsumerWidget {
+  const CandidateInterviewsPage({super.key});
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _interviewsStream(
-    String companyId,
+    String candidateId,
   ) {
     return FirebaseFirestore.instance
         .collection('interviews')
-        .where('companyId', isEqualTo: companyId)
+        .where('candidateId', isEqualTo: candidateId)
         .snapshots();
   }
 
   String _formatDate(Timestamp? timestamp) {
     if (timestamp == null) return 'Date non définie';
+
     final date = timestamp.toDate();
 
     return '${date.day.toString().padLeft(2, '0')}/'
@@ -27,126 +28,23 @@ class CompanyInterviewsPage extends ConsumerWidget {
 
   String _formatTime(Timestamp? timestamp) {
     if (timestamp == null) return '--:--';
+
     final date = timestamp.toDate();
 
     return '${date.hour.toString().padLeft(2, '0')}:'
         '${date.minute.toString().padLeft(2, '0')}';
   }
 
-  String _dateTimeForMessage(Timestamp? timestamp) {
-    if (timestamp == null) return '';
-    return '${_formatDate(timestamp)} à ${_formatTime(timestamp)}';
-  }
+  Future<void> _openLocationOrLink(String value) async {
+    final cleanValue = value.trim();
 
-  Future<void> _createNotification({
-    required String candidateId,
-    required String title,
-    required String message,
-  }) async {
-    if (candidateId.trim().isEmpty) return;
+    if (cleanValue.isEmpty) return;
 
-    await FirebaseFirestore.instance.collection('notifications').add({
-      'userId': candidateId,
-      'title': title,
-      'message': message,
-      'type': 'application_status',
-      'isRead': false,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-  }
+    final uri = Uri.tryParse(cleanValue);
 
-  Future<void> _markDone(
-    BuildContext context,
-    QueryDocumentSnapshot<Map<String, dynamic>> doc,
-  ) async {
-    final data = doc.data();
-
-    await FirebaseFirestore.instance
-        .collection('interviews')
-        .doc(doc.id)
-        .update({'status': 'done', 'updatedAt': FieldValue.serverTimestamp()});
-
-    await _createNotification(
-      candidateId: data['candidateId']?.toString() ?? '',
-      title: 'Entretien terminé',
-      message:
-          '${data['companyName'] ?? 'Entreprise'} a marqué votre entretien pour "${data['jobTitle'] ?? 'le poste'}" comme terminé.',
-    );
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entretien marqué comme terminé.')),
-      );
+    if (uri != null && uri.hasScheme) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
-  }
-
-  Future<void> _cancelInterview(
-    BuildContext context,
-    QueryDocumentSnapshot<Map<String, dynamic>> doc,
-  ) async {
-    final data = doc.data();
-    final applicationId = data['applicationId']?.toString() ?? '';
-
-    await FirebaseFirestore.instance
-        .collection('interviews')
-        .doc(doc.id)
-        .update({
-          'status': 'cancelled',
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-
-    if (applicationId.isNotEmpty) {
-      await FirebaseFirestore.instance
-          .collection('applications')
-          .doc(applicationId)
-          .update({
-            'status': 'reviewing',
-            'reviewingAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-    }
-
-    await _createNotification(
-      candidateId: data['candidateId']?.toString() ?? '',
-      title: 'Entretien annulé',
-      message:
-          '${data['companyName'] ?? 'Entreprise'} a annulé votre entretien pour "${data['jobTitle'] ?? 'le poste'}".',
-    );
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Entretien annulé.')));
-    }
-  }
-
-  Future<void> _postponeInterview(
-    BuildContext context,
-    QueryDocumentSnapshot<Map<String, dynamic>> doc,
-  ) async {
-    final data = doc.data();
-
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ScheduleInterviewPage(
-          candidateData: {
-            'interviewId': doc.id,
-            'applicationId': data['applicationId']?.toString() ?? '',
-            'candidateId': data['candidateId']?.toString() ?? '',
-            'companyId': data['companyId']?.toString() ?? '',
-            'jobId': data['jobId']?.toString() ?? '',
-            'jobTitle': data['jobTitle']?.toString() ?? '',
-            'companyName': data['companyName']?.toString() ?? 'Entreprise',
-            'fullName': data['candidateName']?.toString() ?? 'Candidat',
-            'scheduledAt': data['scheduledAt'],
-            'mode': data['mode']?.toString() ?? 'Téléphone',
-            'locationOrLink': data['locationOrLink']?.toString() ?? '',
-            'note': data['note']?.toString() ?? '',
-            'isReschedule': true,
-          },
-        ),
-      ),
-    );
   }
 
   @override
@@ -154,7 +52,7 @@ class CompanyInterviewsPage extends ConsumerWidget {
     final user = ref.watch(authProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Entretiens')),
+      appBar: AppBar(title: const Text('Mes entretiens')),
       body: SafeArea(
         child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: _interviewsStream(user.id),
@@ -199,12 +97,12 @@ class CompanyInterviewsPage extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
               children: [
                 const Text(
-                  'Calendrier des entretiens',
+                  'Mes entretiens',
                   style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${interviews.length} entretien(s) planifié(s)',
+                  '${interviews.length} entretien(s)',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.65),
                     fontSize: 15,
@@ -214,9 +112,9 @@ class CompanyInterviewsPage extends ConsumerWidget {
                 ...interviews.map((doc) {
                   final data = doc.data();
 
-                  return _InterviewCard(
-                    candidateName:
-                        data['candidateName']?.toString() ?? 'Candidat',
+                  return _CandidateInterviewCard(
+                    companyName:
+                        data['companyName']?.toString() ?? 'Entreprise',
                     jobTitle: data['jobTitle']?.toString() ?? 'Poste',
                     mode: data['mode']?.toString() ?? '',
                     locationOrLink: data['locationOrLink']?.toString() ?? '',
@@ -224,9 +122,9 @@ class CompanyInterviewsPage extends ConsumerWidget {
                     status: data['status']?.toString() ?? 'planned',
                     date: _formatDate(data['scheduledAt']),
                     time: _formatTime(data['scheduledAt']),
-                    onDone: () => _markDone(context, doc),
-                    onCancel: () => _cancelInterview(context, doc),
-                    onPostpone: () => _postponeInterview(context, doc),
+                    onOpenLink: () => _openLocationOrLink(
+                      data['locationOrLink']?.toString() ?? '',
+                    ),
                   );
                 }),
               ],
@@ -238,8 +136,8 @@ class CompanyInterviewsPage extends ConsumerWidget {
   }
 }
 
-class _InterviewCard extends StatelessWidget {
-  final String candidateName;
+class _CandidateInterviewCard extends StatelessWidget {
+  final String companyName;
   final String jobTitle;
   final String mode;
   final String locationOrLink;
@@ -247,12 +145,10 @@ class _InterviewCard extends StatelessWidget {
   final String status;
   final String date;
   final String time;
-  final VoidCallback onDone;
-  final VoidCallback onCancel;
-  final VoidCallback onPostpone;
+  final VoidCallback onOpenLink;
 
-  const _InterviewCard({
-    required this.candidateName,
+  const _CandidateInterviewCard({
+    required this.companyName,
     required this.jobTitle,
     required this.mode,
     required this.locationOrLink,
@@ -260,9 +156,7 @@ class _InterviewCard extends StatelessWidget {
     required this.status,
     required this.date,
     required this.time,
-    required this.onDone,
-    required this.onCancel,
-    required this.onPostpone,
+    required this.onOpenLink,
   });
 
   Color _statusColor() {
@@ -289,10 +183,24 @@ class _InterviewCard extends StatelessWidget {
     }
   }
 
-  bool get _isClosed => status == 'done' || status == 'cancelled';
+  IconData _modeIcon() {
+    switch (mode) {
+      case 'Présentiel':
+        return Icons.location_on_outlined;
+      case 'Visio':
+        return Icons.video_call_outlined;
+      case 'Téléphone':
+      default:
+        return Icons.phone_outlined;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final hasClickableLink =
+        locationOrLink.startsWith('http://') ||
+        locationOrLink.startsWith('https://');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(16),
@@ -309,7 +217,7 @@ class _InterviewCard extends StatelessWidget {
               const CircleAvatar(
                 radius: 24,
                 backgroundColor: Colors.blueAccent,
-                child: Icon(Icons.person, color: Colors.white),
+                child: Icon(Icons.business, color: Colors.white),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -317,7 +225,7 @@ class _InterviewCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      candidateName,
+                      companyName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -364,42 +272,29 @@ class _InterviewCard extends StatelessWidget {
               _InfoPill(icon: Icons.schedule, label: time),
             ],
           ),
-          const SizedBox(height: 10),
-          _InfoLine(icon: Icons.meeting_room_outlined, label: mode),
+          const SizedBox(height: 12),
+          _InfoLine(icon: _modeIcon(), label: mode),
           if (locationOrLink.trim().isNotEmpty)
-            _InfoLine(icon: Icons.link_outlined, label: locationOrLink),
+            _InfoLine(
+              icon: hasClickableLink
+                  ? Icons.link_outlined
+                  : Icons.place_outlined,
+              label: locationOrLink,
+            ),
           if (note.trim().isNotEmpty)
             _InfoLine(icon: Icons.notes_outlined, label: note),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _isClosed ? null : onDone,
-                  icon: const Icon(Icons.check_circle_outline),
-                  label: const Text('Terminé'),
-                ),
+          if (hasClickableLink) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton.icon(
+                onPressed: onOpenLink,
+                icon: const Icon(Icons.open_in_new),
+                label: const Text('Ouvrir le lien'),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _isClosed ? null : onPostpone,
-                  icon: const Icon(Icons.edit_calendar_outlined),
-                  label: const Text('Reporter'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: OutlinedButton.icon(
-              onPressed: _isClosed ? null : onCancel,
-              icon: const Icon(Icons.close),
-              label: const Text('Annuler l’entretien'),
             ),
-          ),
+          ],
         ],
       ),
     );
