@@ -543,29 +543,31 @@ class _ApplicationsTabContent extends StatelessWidget {
             _TimelineStepData(
               title: 'Candidature envoyée',
               subtitle: 'Votre candidature a été transmise.',
-              date: _formatDate(application.createdAt),
+              date: _formatDate(
+                application.submittedAt ?? application.createdAt,
+              ),
               isDone: true,
               isRejected: false,
             ),
             _TimelineStepData(
               title: 'Analyse RH',
               subtitle: 'Votre profil est en cours d’analyse.',
-              date: '',
+              date: _formatDate(application.reviewingAt),
               isDone: _isStepDone(application.status, 'reviewing'),
               isRejected: false,
             ),
             _TimelineStepData(
               title: 'Entretien',
               subtitle: 'Un entretien est planifié ou en attente.',
-              date: '',
+              date: _formatDate(application.interviewAt),
               isDone: _isStepDone(application.status, 'interview'),
               isRejected: false,
             ),
             if (application.status == 'rejected')
-              const _TimelineStepData(
+              _TimelineStepData(
                 title: 'Candidature refusée',
                 subtitle: 'L’entreprise n’a pas retenu votre candidature.',
-                date: '',
+                date: _formatDate(application.rejectedAt),
                 isDone: true,
                 isRejected: true,
               )
@@ -575,7 +577,7 @@ class _ApplicationsTabContent extends StatelessWidget {
                 subtitle: application.status == 'accepted'
                     ? 'Votre candidature a été acceptée.'
                     : 'En attente de décision finale.',
-                date: '',
+                date: _formatDate(application.acceptedAt),
                 isDone: application.status == 'accepted',
                 isRejected: false,
               ),

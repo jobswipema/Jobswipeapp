@@ -61,21 +61,83 @@ class CompanyInterviewsPage extends ConsumerWidget {
   ) async {
     final data = doc.data();
 
+    final candidateId = data['candidateId']?.toString() ?? '';
+    final companyName = data['companyName']?.toString() ?? 'Entreprise';
+    final jobTitle = data['jobTitle']?.toString() ?? 'le poste';
+
     await FirebaseFirestore.instance
         .collection('interviews')
         .doc(doc.id)
         .update({'status': 'done', 'updatedAt': FieldValue.serverTimestamp()});
 
     await _createNotification(
-      candidateId: data['candidateId']?.toString() ?? '',
+      candidateId: candidateId,
       title: 'Entretien terminé',
       message:
-          '${data['companyName'] ?? 'Entreprise'} a marqué votre entretien pour "${data['jobTitle'] ?? 'le poste'}" comme terminé.',
+          '$companyName a terminé votre entretien pour "$jobTitle". Une décision finale vous sera communiquée prochainement.',
     );
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Entretien marqué comme terminé.')),
+      );
+    }
+  }
+
+  Future<void> _finalDecision(
+    BuildContext context,
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+    String decision,
+  ) async {
+    final data = doc.data();
+
+    final applicationId = data['applicationId']?.toString() ?? '';
+    final candidateId = data['candidateId']?.toString() ?? '';
+    final companyName = data['companyName']?.toString() ?? 'Entreprise';
+    final jobTitle = data['jobTitle']?.toString() ?? 'le poste';
+
+    if (applicationId.trim().isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Candidature introuvable.')));
+      return;
+    }
+
+    final updateData = <String, dynamic>{
+      'status': decision,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (decision == 'accepted') {
+      updateData['acceptedAt'] = FieldValue.serverTimestamp();
+    }
+
+    if (decision == 'rejected') {
+      updateData['rejectedAt'] = FieldValue.serverTimestamp();
+    }
+
+    await FirebaseFirestore.instance
+        .collection('applications')
+        .doc(applicationId)
+        .update(updateData);
+
+    await _createNotification(
+      candidateId: candidateId,
+      title: 'Décision finale',
+      message: decision == 'accepted'
+          ? '$companyName a accepté votre candidature pour "$jobTitle".'
+          : '$companyName n’a pas retenu votre candidature pour "$jobTitle".',
+    );
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            decision == 'accepted'
+                ? 'Candidature acceptée.'
+                : 'Candidature refusée.',
+          ),
+        ),
       );
     }
   }
@@ -227,6 +289,8 @@ class CompanyInterviewsPage extends ConsumerWidget {
                     onDone: () => _markDone(context, doc),
                     onCancel: () => _cancelInterview(context, doc),
                     onPostpone: () => _postponeInterview(context, doc),
+                    onAccept: () => _finalDecision(context, doc, 'accepted'),
+                    onReject: () => _finalDecision(context, doc, 'rejected'),
                   );
                 }),
               ],
@@ -250,6 +314,8 @@ class _InterviewCard extends StatelessWidget {
   final VoidCallback onDone;
   final VoidCallback onCancel;
   final VoidCallback onPostpone;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
 
   const _InterviewCard({
     required this.candidateName,
@@ -263,6 +329,8 @@ class _InterviewCard extends StatelessWidget {
     required this.onDone,
     required this.onCancel,
     required this.onPostpone,
+    required this.onAccept,
+    required this.onReject,
   });
 
   Color _statusColor() {
@@ -400,6 +468,28 @@ class _InterviewCard extends StatelessWidget {
               label: const Text('Annuler l’entretien'),
             ),
           ),
+          if (status == 'done') ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: onAccept,
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('Accepter'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onReject,
+                    icon: const Icon(Icons.close),
+                    label: const Text('Refuser'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

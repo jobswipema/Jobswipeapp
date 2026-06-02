@@ -17,6 +17,11 @@ class ApplicationModel {
   final String candidateCity;
   final String candidateBio;
   final String candidateSkills;
+  final DateTime? submittedAt;
+  final DateTime? reviewingAt;
+  final DateTime? interviewAt;
+  final DateTime? acceptedAt;
+  final DateTime? rejectedAt;
 
   const ApplicationModel({
     required this.id,
@@ -35,6 +40,11 @@ class ApplicationModel {
     required this.candidateCity,
     required this.candidateBio,
     required this.candidateSkills,
+    this.submittedAt,
+    this.reviewingAt,
+    this.interviewAt,
+    this.acceptedAt,
+    this.rejectedAt,
   });
 
   factory ApplicationModel.fromFirestore(DocumentSnapshot doc) {
@@ -59,6 +69,16 @@ class ApplicationModel {
       candidateCity: data['candidateCity'] ?? '',
       candidateBio: data['candidateBio'] ?? '',
       candidateSkills: data['candidateSkills'] ?? '',
+
+      submittedAt: (data['submittedAt'] as Timestamp?)?.toDate(),
+
+      reviewingAt: (data['reviewingAt'] as Timestamp?)?.toDate(),
+
+      interviewAt: (data['interviewAt'] as Timestamp?)?.toDate(),
+
+      acceptedAt: (data['acceptedAt'] as Timestamp?)?.toDate(),
+
+      rejectedAt: (data['rejectedAt'] as Timestamp?)?.toDate(),
     );
   }
 }
