@@ -21,6 +21,62 @@ class AdminDashboardPage extends ConsumerStatefulWidget {
 class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
   int _selectedTab = 0;
 
+  Future<void> _confirmCompanyStatusUpdate({
+    required BuildContext context,
+    required String userId,
+    required String status,
+    required String companyName,
+  }) async {
+    String title;
+    String message;
+    String confirmLabel;
+
+    if (status == 'approved') {
+      title = 'Valider l’entreprise';
+      message =
+          'Confirmez-vous la validation de "$companyName" ? Cette entreprise pourra publier des offres.';
+      confirmLabel = 'Valider';
+    } else if (status == 'rejected') {
+      title = 'Refuser l’entreprise';
+      message =
+          'Confirmez-vous le refus de "$companyName" ? Cette entreprise ne pourra pas publier d’offres.';
+      confirmLabel = 'Refuser';
+    } else {
+      title = 'Remettre en attente';
+      message =
+          'Confirmez-vous la remise en attente de "$companyName" ? L’entreprise devra être validée à nouveau.';
+      confirmLabel = 'Confirmer';
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(confirmLabel),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    await _updateCompanyStatus(
+      context: context,
+      userId: userId,
+      status: status,
+    );
+  }
+
   Future<void> _updateCompanyStatus({
     required BuildContext context,
     required String userId,
@@ -32,6 +88,32 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
       'verificationStatus': status,
       'isVerifiedCompany': isApproved,
       'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    String title;
+    String message;
+
+    if (status == 'approved') {
+      title = 'Entreprise validée';
+      message =
+          'Votre compte entreprise a été validé. Vous pouvez maintenant publier des offres sur JobSwipe.';
+    } else if (status == 'rejected') {
+      title = 'Validation refusée';
+      message =
+          'La validation de votre compte entreprise a été refusée. Veuillez vérifier vos informations ou contacter l’administrateur.';
+    } else {
+      title = 'Validation en attente';
+      message =
+          'Votre compte entreprise a été remis en attente de validation par l’administrateur.';
+    }
+
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'userId': userId,
+      'title': title,
+      'message': message,
+      'type': 'company_verification',
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
     });
 
     if (!context.mounted) return;
@@ -221,25 +303,28 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                               else if (_selectedTab == 1)
                                 _CompaniesTab(
                                   companies: companies,
-                                  onApprove: (userId) {
-                                    _updateCompanyStatus(
+                                  onApprove: (userId, companyName) {
+                                    _confirmCompanyStatusUpdate(
                                       context: context,
                                       userId: userId,
                                       status: 'approved',
+                                      companyName: companyName,
                                     );
                                   },
-                                  onReject: (userId) {
-                                    _updateCompanyStatus(
+                                  onReject: (userId, companyName) {
+                                    _confirmCompanyStatusUpdate(
                                       context: context,
                                       userId: userId,
                                       status: 'rejected',
+                                      companyName: companyName,
                                     );
                                   },
-                                  onPending: (userId) {
-                                    _updateCompanyStatus(
+                                  onPending: (userId, companyName) {
+                                    _confirmCompanyStatusUpdate(
                                       context: context,
                                       userId: userId,
                                       status: 'pending',
+                                      companyName: companyName,
                                     );
                                   },
                                 )
@@ -519,9 +604,9 @@ class _DashboardTab extends StatelessWidget {
 
 class _CompaniesTab extends StatefulWidget {
   final List<QueryDocumentSnapshot<Map<String, dynamic>>> companies;
-  final ValueChanged<String> onApprove;
-  final ValueChanged<String> onReject;
-  final ValueChanged<String> onPending;
+  final void Function(String userId, String companyName) onApprove;
+  final void Function(String userId, String companyName) onReject;
+  final void Function(String userId, String companyName) onPending;
 
   const _CompaniesTab({
     required this.companies,
@@ -824,9 +909,9 @@ class _CompanyAdminCard extends StatelessWidget {
   final String email;
   final String status;
   final bool isVerified;
-  final ValueChanged<String> onApprove;
-  final ValueChanged<String> onReject;
-  final ValueChanged<String> onPending;
+  final void Function(String userId, String companyName) onApprove;
+  final void Function(String userId, String companyName) onReject;
+  final void Function(String userId, String companyName) onPending;
 
   const _CompanyAdminCard({
     required this.userId,
@@ -911,7 +996,7 @@ class _CompanyAdminCard extends StatelessWidget {
               width: double.infinity,
               height: 44,
               child: ElevatedButton.icon(
-                onPressed: () => onApprove(userId),
+                onPressed: () => onApprove(userId, name),
                 icon: const Icon(Icons.verified_outlined),
                 label: const Text('Valider'),
               ),
@@ -921,7 +1006,7 @@ class _CompanyAdminCard extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: isRejected ? null : () => onReject(userId),
+                  onPressed: isRejected ? null : () => onReject(userId, name),
                   icon: const Icon(Icons.close),
                   label: const Text('Refuser'),
                 ),
@@ -931,7 +1016,7 @@ class _CompanyAdminCard extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: status == 'pending'
                       ? null
-                      : () => onPending(userId),
+                      : () => onPending(userId, name),
                   icon: const Icon(Icons.watch_later_outlined),
                   label: const Text('Attente'),
                 ),

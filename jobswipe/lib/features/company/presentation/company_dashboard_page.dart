@@ -9,6 +9,7 @@ import 'package:jobswipe/features/company/presentation/create_job_page.dart';
 import 'package:jobswipe/shared/models/application_model.dart';
 import 'package:jobswipe/shared/models/job_offer.dart';
 import 'package:jobswipe/shared/providers/auth_provider.dart';
+import 'package:jobswipe/features/company/presentation/company_notifications_page.dart';
 
 class CompanyDashboardPage extends ConsumerStatefulWidget {
   const CompanyDashboardPage({super.key});
@@ -68,6 +69,56 @@ class _CompanyDashboardPageState extends ConsumerState<CompanyDashboardPage> {
       appBar: AppBar(
         title: const Text('Espace Entreprise'),
         actions: [
+          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('notifications')
+                .where('userId', isEqualTo: user.id)
+                .where('isRead', isEqualTo: false)
+                .snapshots(),
+            builder: (context, snapshot) {
+              final unreadCount = snapshot.data?.docs.length ?? 0;
+
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              CompanyNotificationsPage(companyId: user.id),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.notifications_outlined),
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          unreadCount > 9 ? '9+' : unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             onPressed: authNotifier.logout,
             icon: const Icon(Icons.logout),
