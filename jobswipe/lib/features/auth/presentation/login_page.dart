@@ -157,55 +157,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     child: const Text('Créer un compte'),
                   ),
                 ),
-
-                const SizedBox(height: 20),
-
-                /// -------- DEV BUTTONS --------
-                const Divider(),
-
-                const SizedBox(height: 10),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: OutlinedButton(
-                    onPressed: authNotifier.loginAsCandidate,
-                    child: const Text('Test candidat'),
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: OutlinedButton(
-                    onPressed: authNotifier.loginAsPendingCompany,
-                    child: const Text('Test entreprise (non vérifiée)'),
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: OutlinedButton(
-                    onPressed: authNotifier.loginAsVerifiedCompany,
-                    child: const Text('Test entreprise vérifiée'),
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: TextButton(
-                    onPressed: authNotifier.loginAsAdmin,
-                    child: const Text('Test admin'),
-                  ),
-                ),
               ],
             ),
           ),
