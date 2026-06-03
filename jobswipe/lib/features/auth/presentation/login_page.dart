@@ -74,92 +74,111 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 28),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Spacer(),
 
-                const Text(
-                  'Connexion',
-                  style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold),
-                ),
-
-                const SizedBox(height: 12),
-
-                Text(
-                  'Connecte-toi à JobSwipe pour découvrir ou publier des opportunités.',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.white.withOpacity(0.72),
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                /// EMAIL
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: _inputDecoration(
-                    hintText: 'Email',
-                    icon: Icons.mail_outline,
-                  ),
-                ),
-
-                const SizedBox(height: 18),
-
-                /// PASSWORD
-                TextField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: _inputDecoration(
-                    hintText: 'Mot de passe',
-                    icon: Icons.lock_outline,
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
+                      const Text(
+                        'Connexion',
+                        style: TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                          height: 1.05,
+                        ),
                       ),
-                    ),
-                  ),
-                ),
 
-                const SizedBox(height: 28),
+                      const SizedBox(height: 14),
 
-                /// 🔥 LOGIN FIREBASE
-                SizedBox(
-                  width: double.infinity,
-                  height: 58,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleLogin,
-                    child: _isLoading
-                        ? const CircularProgressIndicator()
-                        : const Text('Connexion'),
+                      Text(
+                        'Connecte-toi à JobSwipe pour découvrir ou publier des opportunités.',
+                        style: TextStyle(
+                          fontSize: 18,
+                          height: 1.35,
+                          color: Colors.white.withOpacity(0.72),
+                        ),
+                      ),
+
+                      const SizedBox(height: 42),
+
+                      TextField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: _inputDecoration(
+                          hintText: 'Email',
+                          icon: Icons.mail_outline,
+                        ),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
+                        decoration: _inputDecoration(
+                          hintText: 'Mot de passe',
+                          icon: Icons.lock_outline,
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 58,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _handleLogin,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.4,
+                                  ),
+                                )
+                              : const Text('Connexion'),
+                        ),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: TextButton(
+                          onPressed: () {
+                            context.push('/register');
+                          },
+                          child: const Text('Créer un compte'),
+                        ),
+                      ),
+
+                      const Spacer(),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: TextButton(
-                    onPressed: () {
-                      context.push('/register');
-                    },
-                    child: const Text('Créer un compte'),
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
