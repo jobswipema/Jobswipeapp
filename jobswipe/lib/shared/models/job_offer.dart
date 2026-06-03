@@ -14,7 +14,7 @@ class JobOffer {
   final String description;
   final bool isActive;
   final DateTime? createdAt;
-
+  final String jobStatus;
   final String videoUrl;
   final String videoFileName;
   final String thumbnailUrl;
@@ -45,6 +45,7 @@ class JobOffer {
     required this.likesCount,
     required this.favoritesCount,
     required this.applicationsCount,
+    this.jobStatus = 'open',
   });
 
   factory JobOffer.fromFirestore(DocumentSnapshot doc) {

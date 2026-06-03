@@ -598,10 +598,149 @@ class _CompactJobRow extends StatelessWidget {
 
   const _CompactJobRow({required this.job, required this.applicationsCount});
 
+  Future<void> _updateJobStatus({
+    required BuildContext context,
+    required String jobId,
+    required String action,
+  }) async {
+    String title;
+    String message;
+    String confirmLabel;
+
+    if (action == 'pause') {
+      title = 'Désactiver l’offre';
+      message =
+          'Confirmez-vous la désactivation de cette offre ? Elle ne sera plus visible par les candidats.';
+      confirmLabel = 'Désactiver';
+    } else if (action == 'open') {
+      title = 'Réactiver l’offre';
+      message =
+          'Confirmez-vous la réactivation de cette offre ? Elle sera à nouveau visible par les candidats.';
+      confirmLabel = 'Réactiver';
+    } else if (action == 'close') {
+      title = 'Clôturer le recrutement';
+      message =
+          'Confirmez-vous la clôture de cette offre ? Elle ne sera plus visible et sera marquée comme recrutement terminé.';
+      confirmLabel = 'Clôturer';
+    } else {
+      title = 'Supprimer l’offre';
+      message =
+          'Confirmez-vous la suppression définitive de cette offre ? Cette action est irréversible.';
+      confirmLabel = 'Supprimer';
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(confirmLabel),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    if (action == 'delete') {
+      if (applicationsCount > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Impossible de supprimer une offre ayant déjà des candidatures. Vous pouvez la désactiver ou la clôturer.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      await FirebaseFirestore.instance.collection('jobs').doc(jobId).delete();
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Offre supprimée.')));
+
+      return;
+    }
+
+    final updateData = <String, dynamic>{
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (action == 'pause') {
+      updateData['isActive'] = false;
+      updateData['jobStatus'] = 'paused';
+    }
+
+    if (action == 'open') {
+      updateData['isActive'] = true;
+      updateData['jobStatus'] = 'open';
+    }
+
+    if (action == 'close') {
+      updateData['isActive'] = false;
+      updateData['jobStatus'] = 'closed';
+      updateData['closedAt'] = FieldValue.serverTimestamp();
+      updateData['closedReason'] = 'hired';
+    }
+
+    await FirebaseFirestore.instance
+        .collection('jobs')
+        .doc(jobId)
+        .update(updateData);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          action == 'pause'
+              ? 'Offre désactivée.'
+              : action == 'open'
+              ? 'Offre réactivée.'
+              : 'Offre clôturée.',
+        ),
+      ),
+    );
+  }
+
+  Color _statusColor(String jobStatus, bool isActive) {
+    if (jobStatus == 'closed') return Colors.purpleAccent;
+    if (jobStatus == 'paused' || !isActive) return Colors.orangeAccent;
+    return Colors.greenAccent;
+  }
+
+  String _statusLabel(String jobStatus, bool isActive) {
+    if (jobStatus == 'closed') return 'Clôturée';
+    if (jobStatus == 'paused' || !isActive) return 'Désactivée';
+    return 'Active';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final statusColor = job.isActive ? Colors.greenAccent : Colors.orangeAccent;
-    final statusLabel = job.isActive ? 'Active' : 'Inactive';
+    final jobStatus = job.jobStatus.isEmpty
+        ? (job.isActive ? 'open' : 'paused')
+        : job.jobStatus;
+
+    final statusColor = _statusColor(jobStatus, job.isActive);
+    final statusLabel = _statusLabel(jobStatus, job.isActive);
+
+    final canPause = jobStatus == 'open' && job.isActive;
+    final canOpen =
+        jobStatus == 'paused' || (!job.isActive && jobStatus != 'closed');
+    final canClose = jobStatus != 'closed';
+    final canDelete = applicationsCount == 0;
 
     return InkWell(
       borderRadius: BorderRadius.circular(18),
@@ -679,8 +818,66 @@ class _CompactJobRow extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right, color: Colors.white38),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.white54),
+              color: const Color(0xFF161D2E),
+              onSelected: (value) {
+                if (value == 'applications') {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => CompanyApplicationsPage(job: job),
+                    ),
+                  );
+                  return;
+                }
+
+                if (value == 'edit') {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Modification de l’offre à ajouter.'),
+                    ),
+                  );
+                  return;
+                }
+
+                _updateJobStatus(
+                  context: context,
+                  jobId: job.id,
+                  action: value,
+                );
+              },
+              itemBuilder: (context) {
+                return [
+                  const PopupMenuItem(
+                    value: 'applications',
+                    child: Text('Voir les candidatures'),
+                  ),
+                  const PopupMenuItem(value: 'edit', child: Text('Modifier')),
+                  if (canPause)
+                    const PopupMenuItem(
+                      value: 'pause',
+                      child: Text('Désactiver'),
+                    ),
+                  if (canOpen)
+                    const PopupMenuItem(
+                      value: 'open',
+                      child: Text('Réactiver'),
+                    ),
+                  if (canClose)
+                    const PopupMenuItem(
+                      value: 'close',
+                      child: Text('Clôturer recrutement'),
+                    ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    enabled: canDelete,
+                    child: Text(
+                      canDelete ? 'Supprimer' : 'Supprimer impossible',
+                    ),
+                  ),
+                ];
+              },
+            ),
           ],
         ),
       ),

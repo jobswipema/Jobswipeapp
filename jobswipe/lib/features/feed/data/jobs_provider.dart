@@ -6,6 +6,7 @@ final jobsStreamProvider = StreamProvider.autoDispose<List<JobOffer>>((ref) {
   return FirebaseFirestore.instance
       .collection('jobs')
       .where('isActive', isEqualTo: true)
+      .where('jobStatus', isEqualTo: 'open')
       .snapshots(includeMetadataChanges: false)
       .map((snapshot) {
         final jobs = snapshot.docs.map(JobOffer.fromFirestore).toList();

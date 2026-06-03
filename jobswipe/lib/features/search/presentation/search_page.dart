@@ -46,6 +46,7 @@ class _SearchPageState extends State<SearchPage> {
     return FirebaseFirestore.instance
         .collection('jobs')
         .where('isActive', isEqualTo: true)
+        .where('jobStatus', isEqualTo: 'open')
         .snapshots()
         .map((snapshot) {
           final jobs = snapshot.docs.map(JobOffer.fromFirestore).where((job) {

@@ -139,6 +139,7 @@ class _CreateJobPageState extends State<CreateJobPage> {
         'favoritesCount': 0,
         'applicationsCount': 0,
         'isActive': true,
+        'jobStatus': 'open',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
