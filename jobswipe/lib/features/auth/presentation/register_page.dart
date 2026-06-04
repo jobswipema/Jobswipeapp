@@ -11,6 +11,9 @@ class RegisterPage extends ConsumerStatefulWidget {
 }
 
 class _RegisterPageState extends ConsumerState<RegisterPage> {
+  static const String _logoUrl =
+      'https://res.cloudinary.com/dfqxmh5gq/image/upload/v1780565357/logo_jobswipe_j8stfm.png';
+
   final _formKey = GlobalKey<FormState>();
 
   final _displayNameController = TextEditingController();
@@ -84,6 +87,45 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Widget _buildLogo() {
+    return Center(
+      child: Image.network(
+        _logoUrl,
+        height: 86,
+        fit: BoxFit.contain,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+
+          return const SizedBox(
+            height: 86,
+            child: Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2.2),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return const SizedBox(
+            height: 86,
+            child: Center(
+              child: Text(
+                'JobSwipe',
+                style: TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Widget _roleCard({
@@ -161,15 +203,23 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       appBar: AppBar(title: const Text('Créer un compte')),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 30),
+          padding: const EdgeInsets.fromLTRB(24, 18, 24, 30),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _buildLogo(),
+
+              const SizedBox(height: 32),
+
               const Text(
-                'Bienvenue sur JobSwipe',
-                style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+                'Bienvenue',
+                style: TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                  height: 1.05,
+                ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Text(
                 'Choisis ton type de compte pour accéder aux fonctionnalités adaptées.',
                 style: TextStyle(
@@ -303,7 +353,11 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _handleRegister,
                   child: _isLoading
-                      ? const CircularProgressIndicator()
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2.4),
+                        )
                       : Text(
                           isCompany
                               ? 'Créer le compte entreprise'

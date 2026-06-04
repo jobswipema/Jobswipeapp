@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:jobswipe/shared/providers/auth_provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:jobswipe/shared/providers/auth_provider.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -11,6 +11,9 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
+  static const String _logoUrl =
+      'https://res.cloudinary.com/dfqxmh5gq/image/upload/v1780565357/logo_jobswipe_j8stfm.png';
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -60,18 +63,59 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     try {
       await authNotifier.loginWithEmail(email, password);
     } catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
+  }
+
+  Widget _buildLogo() {
+    return Center(
+      child: Image.network(
+        _logoUrl,
+        height: 92,
+        fit: BoxFit.contain,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+
+          return const SizedBox(
+            height: 92,
+            child: Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2.2),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return const SizedBox(
+            height: 92,
+            child: Center(
+              child: Text(
+                'JobSwipe',
+                style: TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final authNotifier = ref.read(authProvider.notifier);
-
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(
@@ -85,6 +129,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Spacer(),
+
+                      _buildLogo(),
+
+                      const SizedBox(height: 34),
 
                       const Text(
                         'Connexion',
