@@ -11,9 +11,6 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
-  static const String _logoUrl =
-      'https://res.cloudinary.com/dfqxmh5gq/image/upload/v1780565357/logo_jobswipe_j8stfm.png';
-
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -77,39 +74,29 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   Widget _buildLogo() {
     return Center(
-      child: Image.network(
-        _logoUrl,
-        height: 92,
-        fit: BoxFit.contain,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-
-          return const SizedBox(
-            height: 92,
-            child: Center(
-              child: SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(strokeWidth: 2.2),
-              ),
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return const SizedBox(
-            height: 92,
-            child: Center(
-              child: Text(
-                'JobSwipe',
-                style: TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.2,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Image.asset(
+          'assets/branding/logo_jobswipe.png',
+          height: 145,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return const SizedBox(
+              height: 110,
+              child: Center(
+                child: Text(
+                  'JobSwipe',
+                  style: TextStyle(
+                    fontSize: 38,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.2,
+                  ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -132,7 +119,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                       _buildLogo(),
 
-                      const SizedBox(height: 34),
+                      const SizedBox(height: 24),
 
                       const Text(
                         'Connexion',
