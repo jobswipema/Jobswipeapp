@@ -111,6 +111,40 @@ class _EditCandidateProfilePageState
         .toList();
   }
 
+  int _calculateProfileCompletion({
+    required String displayName,
+    required String title,
+    required String city,
+    required String phone,
+    required String bio,
+    required List<String> skills,
+  }) {
+    var score = 0;
+
+    if (displayName.trim().isNotEmpty) score += 15;
+    if (title.trim().isNotEmpty) score += 15;
+    if (city.trim().isNotEmpty) score += 15;
+    if (phone.trim().isNotEmpty) score += 15;
+    if (bio.trim().length >= 20) score += 20;
+    if (skills.length >= 3) score += 20;
+
+    return score;
+  }
+
+  bool _isProfileComplete({
+    required String title,
+    required String city,
+    required String phone,
+    required String bio,
+    required List<String> skills,
+  }) {
+    return title.trim().isNotEmpty &&
+        city.trim().isNotEmpty &&
+        phone.trim().isNotEmpty &&
+        bio.trim().length >= 20 &&
+        skills.length >= 3;
+  }
+
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -119,16 +153,42 @@ class _EditCandidateProfilePageState
     setState(() => _isSaving = true);
 
     try {
+      final displayName = _displayNameController.text.trim();
+      final title = _titleController.text.trim();
+      final city = _cityController.text.trim();
+      final phone = _phoneController.text.trim();
+      final bio = _bioController.text.trim();
+      final skills = _parseSkills(_skillsController.text);
+
+      final completionPercent = _calculateProfileCompletion(
+        displayName: displayName,
+        title: title,
+        city: city,
+        phone: phone,
+        bio: bio,
+        skills: skills,
+      );
+
+      final profileCompleted = _isProfileComplete(
+        title: title,
+        city: city,
+        phone: phone,
+        bio: bio,
+        skills: skills,
+      );
+
       await FirebaseFirestore.instance.collection('users').doc(user.id).update({
-        'displayName': _displayNameController.text.trim(),
-        'title': _titleController.text.trim(),
-        'city': _cityController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'bio': _bioController.text.trim(),
-        'skills': _parseSkills(_skillsController.text),
+        'displayName': displayName,
+        'title': title,
+        'city': city,
+        'phone': phone,
+        'bio': bio,
+        'skills': skills,
         'linkedinUrl': _linkedinController.text.trim(),
         'githubUrl': _githubController.text.trim(),
         'portfolioUrl': _portfolioController.text.trim(),
+        'profileCompletionPercent': completionPercent,
+        'profileCompleted': profileCompleted,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 

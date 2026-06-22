@@ -91,6 +91,8 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
         'cvFileName': file.name,
         'cvUpdatedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
+        'hasCv': true,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
       if (!mounted) return;

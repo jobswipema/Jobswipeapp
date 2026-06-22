@@ -71,6 +71,21 @@ class AuthNotifier extends Notifier<AppUser> {
         'isActive': true,
         'isVerifiedCompany': false,
         'verificationStatus': isCompany ? 'pending' : 'none',
+
+        // Profil candidat
+        'title': '',
+        'city': '',
+        'phone': '',
+        'bio': '',
+        'skills': [],
+        'linkedinUrl': '',
+        'githubUrl': '',
+        'portfolioUrl': '',
+        'cvUrl': '',
+        'cvFileName': '',
+        'profileCompleted': false,
+        'profileCompletionPercent': isCompany ? 100 : 10,
+
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -127,6 +142,21 @@ class AuthNotifier extends Notifier<AppUser> {
       'isActive': true,
       'isVerifiedCompany': false,
       'verificationStatus': 'none',
+
+      // Profil candidat
+      'title': '',
+      'city': '',
+      'phone': '',
+      'bio': '',
+      'skills': [],
+      'linkedinUrl': '',
+      'githubUrl': '',
+      'portfolioUrl': '',
+      'cvUrl': '',
+      'cvFileName': '',
+      'profileCompleted': false,
+      'profileCompletionPercent': 10,
+
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
