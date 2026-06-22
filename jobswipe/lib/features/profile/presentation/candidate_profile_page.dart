@@ -21,6 +21,39 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
   bool _isUploadingCv = false;
   int _selectedTab = 0;
 
+  int _calculateDisplayedCompletion({
+    required String displayName,
+    required String title,
+    required String city,
+    required String phone,
+    required String bio,
+    required List<String> skills,
+    required bool hasCv,
+    required dynamic storedPercent,
+  }) {
+    if (storedPercent is num && storedPercent.toInt() > 0) {
+      final rawPercent = storedPercent.toInt();
+
+      if (hasCv) {
+        return rawPercent.clamp(0, 100);
+      }
+
+      return rawPercent >= 100 ? 85 : rawPercent.clamp(0, 85);
+    }
+
+    var score = 0;
+
+    if (displayName.trim().isNotEmpty) score += 10;
+    if (title.trim().isNotEmpty) score += 15;
+    if (city.trim().isNotEmpty) score += 10;
+    if (phone.trim().isNotEmpty) score += 10;
+    if (bio.trim().length >= 20) score += 20;
+    if (skills.length >= 3) score += 20;
+    if (hasCv) score += 15;
+
+    return score.clamp(0, 100);
+  }
+
   Stream<DocumentSnapshot<Map<String, dynamic>>> _profileStream(String uid) {
     return FirebaseFirestore.instance.collection('users').doc(uid).snapshots();
   }
@@ -193,18 +226,23 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
                 ? (data['profileCompletionPercent'] as num).toInt()
                 : 0;
 
-            final hasCv = cvUrl.trim().isNotEmpty;
-
-            final profileCompletionPercent = hasCv
-                ? rawProfileCompletionPercent.clamp(0, 100)
-                : rawProfileCompletionPercent >= 100
-                ? 85
-                : rawProfileCompletionPercent.clamp(0, 85);
-
             final skillsRaw = data['skills'];
             final skills = skillsRaw is List
                 ? skillsRaw.map((e) => e.toString()).toList()
                 : <String>[];
+
+            final hasCv = cvUrl.trim().isNotEmpty;
+
+            final profileCompletionPercent = _calculateDisplayedCompletion(
+              displayName: displayName,
+              title: title,
+              city: city,
+              phone: phone,
+              bio: bio,
+              skills: skills,
+              hasCv: hasCv,
+              storedPercent: data['profileCompletionPercent'],
+            );
 
             return StreamBuilder<List<ApplicationModel>>(
               stream: _applicationsStream(user.id),
