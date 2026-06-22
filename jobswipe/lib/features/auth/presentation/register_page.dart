@@ -11,9 +11,6 @@ class RegisterPage extends ConsumerStatefulWidget {
 }
 
 class _RegisterPageState extends ConsumerState<RegisterPage> {
-  static const String _logoUrl =
-      'https://res.cloudinary.com/dfqxmh5gq/image/upload/v1780565357/logo_jobswipe_j8stfm.png';
-
   final _formKey = GlobalKey<FormState>();
 
   final _displayNameController = TextEditingController();
@@ -39,21 +36,34 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon),
+      prefixIcon: Icon(icon, color: Colors.white54),
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: const Color(0xFF1A2235),
+      fillColor: const Color(0xFF111A2C),
+      labelStyle: TextStyle(
+        color: Colors.white.withOpacity(0.48),
+        fontWeight: FontWeight.w500,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
+        borderSide: BorderSide(color: Colors.white.withOpacity(0.06)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
         borderSide: const BorderSide(color: Colors.blueAccent, width: 1.2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: Colors.redAccent.withOpacity(0.75)),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
       ),
     );
   }
@@ -91,32 +101,19 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
   Widget _buildLogo() {
     return Center(
-      child: Image.network(
-        _logoUrl,
-        height: 86,
+      child: Image.asset(
+        'assets/branding/logo_jobswipe.png',
+        height: 150,
+        width: double.infinity,
         fit: BoxFit.contain,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-
-          return const SizedBox(
-            height: 86,
-            child: Center(
-              child: SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(strokeWidth: 2.2),
-              ),
-            ),
-          );
-        },
         errorBuilder: (context, error, stackTrace) {
           return const SizedBox(
-            height: 86,
+            height: 110,
             child: Center(
               child: Text(
                 'JobSwipe',
                 style: TextStyle(
-                  fontSize: 34,
+                  fontSize: 42,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.2,
                 ),
@@ -128,69 +125,90 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
 
-  Widget _roleCard({
+  Widget _roleSegment({
     required UserRole role,
     required IconData icon,
-    required String title,
-    required String subtitle,
+    required String label,
   }) {
     final selected = _selectedRole == role;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(22),
-      onTap: () {
-        setState(() {
-          _selectedRole = role;
-        });
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFF0F2A52) : const Color(0xFF161D2E),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: selected ? Colors.blueAccent : Colors.white10,
-            width: selected ? 1.4 : 1,
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () {
+          setState(() {
+            _selectedRole = role;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          height: 58,
+          decoration: BoxDecoration(
+            color: selected
+                ? Colors.blueAccent.withOpacity(0.18)
+                : const Color(0xFF111A2C),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: selected
+                  ? Colors.blueAccent.withOpacity(0.85)
+                  : Colors.white.withOpacity(0.07),
+              width: selected ? 1.3 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 21,
+                color: selected ? Colors.blueAccent : Colors.white54,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: selected ? Colors.white : Colors.white60,
+                ),
+              ),
+            ],
           ),
         ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 25,
-              backgroundColor: selected
-                  ? Colors.blueAccent
-                  : const Color(0xFF202A3F),
-              child: Icon(icon, color: Colors.white),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 1.35,
-                      color: Colors.white.withOpacity(0.68),
-                    ),
-                  ),
-                ],
+      ),
+    );
+  }
+
+  Widget _companyNotice() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.amber.withOpacity(0.09),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.amber.withOpacity(0.42)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.verified_user_outlined,
+            color: Colors.amber,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Un compte entreprise doit être validé par l’administrateur avant de publier des offres.',
+              style: TextStyle(
+                color: Colors.amber.withOpacity(0.95),
+                height: 1.35,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
               ),
             ),
-            if (selected)
-              const Icon(Icons.check_circle, color: Colors.greenAccent),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -200,173 +218,229 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     final isCompany = _selectedRole == UserRole.company;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Créer un compte')),
+      backgroundColor: const Color(0xFF050A14),
+      appBar: AppBar(
+        title: const Text('Créer un compte'),
+        backgroundColor: const Color(0xFF050A14),
+      ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 30),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildLogo(),
-
-              const SizedBox(height: 32),
-
-              const Text(
-                'Bienvenue',
-                style: TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.bold,
-                  height: 1.05,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.fromLTRB(22, 8, 22, 28),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - 16,
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Choisis ton type de compte pour accéder aux fonctionnalités adaptées.',
-                style: TextStyle(
-                  fontSize: 17,
-                  height: 1.4,
-                  color: Colors.white.withOpacity(0.70),
-                ),
-              ),
-              const SizedBox(height: 28),
-
-              _roleCard(
-                role: UserRole.candidate,
-                icon: Icons.person_outline,
-                title: 'Je suis candidat',
-                subtitle: 'Découvrir des offres, sauvegarder et postuler.',
-              ),
-              const SizedBox(height: 14),
-              _roleCard(
-                role: UserRole.company,
-                icon: Icons.business_outlined,
-                title: 'Je suis une entreprise',
-                subtitle:
-                    'Créer un profil entreprise et demander la validation admin.',
-              ),
-
-              const SizedBox(height: 28),
-
-              if (isCompany)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  margin: const EdgeInsets.only(bottom: 22),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(0.10),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Colors.amber.withOpacity(0.55)),
-                  ),
-                  child: const Text(
-                    'Important : un compte entreprise doit être validé par l’administrateur après vérification de son existence légale et signature du contrat. La publication d’offres sera désactivée tant que le badge Vérifié n’est pas accordé.',
-                    style: TextStyle(
-                      color: Colors.amber,
-                      height: 1.45,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-
-              Form(
-                key: _formKey,
                 child: Column(
                   children: [
-                    TextFormField(
-                      controller: _displayNameController,
-                      decoration: _inputDecoration(
-                        label: isCompany
-                            ? 'Nom de l’entreprise'
-                            : 'Nom complet',
-                        icon: isCompany
-                            ? Icons.business_center_outlined
-                            : Icons.person_outline,
+                    _buildLogo(),
+
+                    const SizedBox(height: 8),
+
+                    Text(
+                      'Crée ton espace JobSwipe.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.72),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
                       ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return isCompany
-                              ? 'Le nom de l’entreprise est obligatoire.'
-                              : 'Le nom complet est obligatoire.';
-                        }
-                        if (value.trim().length < 3) {
-                          return 'Le nom est trop court.';
-                        }
-                        return null;
-                      },
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: _inputDecoration(
-                        label: 'Email',
-                        icon: Icons.mail_outline,
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'L’email est obligatoire.';
-                        }
-                        if (!value.contains('@')) {
-                          return 'Adresse email invalide.';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      decoration: _inputDecoration(
-                        label: 'Mot de passe',
-                        icon: Icons.lock_outline,
-                        suffixIcon: IconButton(
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                          ),
+
+                    const SizedBox(height: 26),
+
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0E1627),
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.08),
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.24),
+                            blurRadius: 24,
+                            offset: const Offset(0, 12),
+                          ),
+                        ],
                       ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Le mot de passe est obligatoire.';
-                        }
-                        if (value.trim().length < 6) {
-                          return 'Le mot de passe doit contenir au moins 6 caractères.';
-                        }
-                        return null;
-                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Inscription',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                              height: 1.05,
+                            ),
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          Text(
+                            'Sélectionne ton profil et complète tes informations.',
+                            style: TextStyle(
+                              fontSize: 15,
+                              height: 1.35,
+                              color: Colors.white.withOpacity(0.58),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+
+                          const SizedBox(height: 22),
+
+                          Row(
+                            children: [
+                              _roleSegment(
+                                role: UserRole.candidate,
+                                icon: Icons.person_outline,
+                                label: 'Candidat',
+                              ),
+                              const SizedBox(width: 10),
+                              _roleSegment(
+                                role: UserRole.company,
+                                icon: Icons.business_outlined,
+                                label: 'Entreprise',
+                              ),
+                            ],
+                          ),
+
+                          if (isCompany) ...[
+                            const SizedBox(height: 16),
+                            _companyNotice(),
+                          ],
+
+                          const SizedBox(height: 22),
+
+                          Form(
+                            key: _formKey,
+                            child: Column(
+                              children: [
+                                TextFormField(
+                                  controller: _displayNameController,
+                                  decoration: _inputDecoration(
+                                    label: isCompany
+                                        ? 'Nom de l’entreprise'
+                                        : 'Nom complet',
+                                    icon: isCompany
+                                        ? Icons.business_center_outlined
+                                        : Icons.person_outline,
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return isCompany
+                                          ? 'Le nom de l’entreprise est obligatoire.'
+                                          : 'Le nom complet est obligatoire.';
+                                    }
+
+                                    if (value.trim().length < 3) {
+                                      return 'Le nom est trop court.';
+                                    }
+
+                                    return null;
+                                  },
+                                ),
+
+                                const SizedBox(height: 14),
+
+                                TextFormField(
+                                  controller: _emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  decoration: _inputDecoration(
+                                    label: 'Email',
+                                    icon: Icons.mail_outline,
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'L’email est obligatoire.';
+                                    }
+
+                                    if (!value.contains('@')) {
+                                      return 'Adresse email invalide.';
+                                    }
+
+                                    return null;
+                                  },
+                                ),
+
+                                const SizedBox(height: 14),
+
+                                TextFormField(
+                                  controller: _passwordController,
+                                  obscureText: _obscurePassword,
+                                  decoration: _inputDecoration(
+                                    label: 'Mot de passe',
+                                    icon: Icons.lock_outline,
+                                    suffixIcon: IconButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _obscurePassword = !_obscurePassword;
+                                        });
+                                      },
+                                      icon: Icon(
+                                        _obscurePassword
+                                            ? Icons.visibility_off
+                                            : Icons.visibility,
+                                        color: Colors.white54,
+                                      ),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Le mot de passe est obligatoire.';
+                                    }
+
+                                    if (value.trim().length < 6) {
+                                      return 'Le mot de passe doit contenir au moins 6 caractères.';
+                                    }
+
+                                    return null;
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          SizedBox(
+                            width: double.infinity,
+                            height: 58,
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _handleRegister,
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.4,
+                                      ),
+                                    )
+                                  : Text(
+                                      isCompany
+                                          ? 'Créer le compte entreprise'
+                                          : 'Créer le compte candidat',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-
-              const SizedBox(height: 28),
-
-              SizedBox(
-                width: double.infinity,
-                height: 58,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleRegister,
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2.4),
-                        )
-                      : Text(
-                          isCompany
-                              ? 'Créer le compte entreprise'
-                              : 'Créer le compte candidat',
-                        ),
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
