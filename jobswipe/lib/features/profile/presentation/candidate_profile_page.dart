@@ -188,6 +188,18 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
 
             final cvUrl = data['cvUrl']?.toString() ?? '';
             final cvFileName = data['cvFileName']?.toString() ?? '';
+            final rawProfileCompletionPercent =
+                (data['profileCompletionPercent'] is num)
+                ? (data['profileCompletionPercent'] as num).toInt()
+                : 0;
+
+            final hasCv = cvUrl.trim().isNotEmpty;
+
+            final profileCompletionPercent = hasCv
+                ? rawProfileCompletionPercent.clamp(0, 100)
+                : rawProfileCompletionPercent >= 100
+                ? 85
+                : rawProfileCompletionPercent.clamp(0, 85);
 
             final skillsRaw = data['skills'];
             final skills = skillsRaw is List
@@ -216,6 +228,11 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
                         email: email,
                         city: city,
                         phone: phone,
+                      ),
+                      const SizedBox(height: 18),
+                      _ProfileCompletionCard(
+                        completionPercent: profileCompletionPercent,
+                        hasCv: hasCv,
                       ),
                       const SizedBox(height: 18),
                       _QuickStats(
@@ -1389,6 +1406,109 @@ class _InfoCard extends StatelessWidget {
         border: Border.all(color: Colors.white10),
       ),
       child: Text(text),
+    );
+  }
+}
+
+class _ProfileCompletionCard extends StatelessWidget {
+  final int completionPercent;
+  final bool hasCv;
+
+  const _ProfileCompletionCard({
+    required this.completionPercent,
+    required this.hasCv,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final normalizedPercent = completionPercent.clamp(0, 100);
+    final progressValue = normalizedPercent / 100;
+
+    final isComplete = normalizedPercent >= 100 && hasCv;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161D2E),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isComplete
+              ? Colors.greenAccent.withOpacity(0.45)
+              : Colors.blueAccent.withOpacity(0.28),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: isComplete
+                      ? Colors.greenAccent.withOpacity(0.14)
+                      : Colors.blueAccent.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  isComplete
+                      ? Icons.verified_outlined
+                      : Icons.trending_up_outlined,
+                  color: isComplete ? Colors.greenAccent : Colors.blueAccent,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  'Profil complété à $normalizedPercent%',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progressValue,
+              minHeight: 9,
+              backgroundColor: Colors.white.withOpacity(0.08),
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          Row(
+            children: [
+              Icon(
+                hasCv
+                    ? Icons.check_circle_outline
+                    : Icons.warning_amber_rounded,
+                color: hasCv ? Colors.greenAccent : Colors.amber,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  hasCv ? 'CV PDF chargé' : 'CV PDF manquant',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: hasCv ? Colors.greenAccent : Colors.amber,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
