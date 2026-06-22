@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jobswipe/features/applications/data/applications_provider.dart';
 import 'package:jobswipe/features/feed/data/job_interactions_provider.dart';
+import 'package:jobswipe/features/profile/presentation/candidate_profile_page.dart';
 import 'package:jobswipe/shared/models/job_offer.dart';
 
 class JobInfoOverlay extends ConsumerWidget {
@@ -54,12 +55,69 @@ class JobInfoOverlay extends ConsumerWidget {
         );
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (!context.mounted) return;
+
+      final errorMessage = e.toString();
+
+      if (errorMessage.contains('Profil incomplet')) {
+        _showIncompleteProfileSheet(context, errorMessage);
+        return;
       }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMessage)));
     }
+  }
+
+  List<String> _extractMissingProfileItems(String errorMessage) {
+    var message = errorMessage
+        .replaceFirst('Profil incomplet.', '')
+        .replaceFirst('Complétez votre', '')
+        .replaceFirst('avant de postuler.', '')
+        .trim();
+
+    if (message.isEmpty) {
+      return [
+        'Titre professionnel',
+        'Ville',
+        'Téléphone',
+        'Résumé professionnel',
+        'Au moins 3 compétences',
+        'CV PDF',
+      ];
+    }
+
+    return message
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .map((item) {
+          return item[0].toUpperCase() + item.substring(1);
+        })
+        .toList();
+  }
+
+  void _showIncompleteProfileSheet(BuildContext context, String errorMessage) {
+    final missingItems = _extractMissingProfileItems(errorMessage);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return _IncompleteProfileBottomSheet(
+          missingItems: missingItems,
+          onCompleteProfile: () {
+            Navigator.of(sheetContext).pop();
+
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const CandidateProfilePage()),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _toggleLike(BuildContext context, WidgetRef ref) async {
@@ -347,6 +405,150 @@ class _Pill extends StatelessWidget {
       child: Text(
         label,
         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+      ),
+    );
+  }
+}
+
+class _IncompleteProfileBottomSheet extends StatelessWidget {
+  final List<String> missingItems;
+  final VoidCallback onCompleteProfile;
+
+  const _IncompleteProfileBottomSheet({
+    required this.missingItems,
+    required this.onCompleteProfile,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(22, 10, 22, bottomPadding + 22),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0E1627),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          const SizedBox(height: 22),
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.14),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.amber.withOpacity(0.45)),
+            ),
+            child: const Icon(
+              Icons.assignment_late_outlined,
+              color: Colors.amber,
+              size: 30,
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Profil incomplet',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+              height: 1.05,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Complète les informations suivantes avant de postuler à cette offre.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              height: 1.35,
+              color: Colors.white.withOpacity(0.62),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 22),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF111A2C),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+            ),
+            child: Column(
+              children: missingItems.map((item) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: Colors.blueAccent.withOpacity(0.14),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check_rounded,
+                          color: Colors.blueAccent,
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          item,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton.icon(
+              onPressed: onCompleteProfile,
+              icon: const Icon(Icons.person_outline),
+              label: const Text(
+                'Compléter mon profil',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Plus tard',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.68),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
