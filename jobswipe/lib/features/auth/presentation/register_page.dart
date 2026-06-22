@@ -103,17 +103,17 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     return Center(
       child: Image.asset(
         'assets/branding/logo_jobswipe.png',
-        height: 150,
+        height: 135,
         width: double.infinity,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
           return const SizedBox(
-            height: 110,
+            height: 100,
             child: Center(
               child: Text(
                 'JobSwipe',
                 style: TextStyle(
-                  fontSize: 42,
+                  fontSize: 40,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.2,
                 ),
@@ -435,6 +435,30 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                           ),
                         ],
                       ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Déjà inscrit ?',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.52),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text(
+                            'Se connecter',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
