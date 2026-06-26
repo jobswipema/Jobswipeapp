@@ -50,9 +50,7 @@ class JobInfoOverlay extends ConsumerWidget {
       await ref.read(applicationsServiceProvider).applyToJob(job);
 
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Candidature envoyée avec succès.')),
-        );
+        _showApplicationSuccessSheet(context);
       }
     } catch (e) {
       if (!context.mounted) return;
@@ -64,9 +62,12 @@ class JobInfoOverlay extends ConsumerWidget {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(errorMessage)));
+      if (errorMessage.contains('déjà postulé')) {
+        _showAlreadyAppliedSheet(context);
+        return;
+      }
+
+      _showGenericErrorSheet(context, errorMessage);
     }
   }
 
@@ -120,14 +121,62 @@ class JobInfoOverlay extends ConsumerWidget {
     );
   }
 
+  void _showAlreadyAppliedSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return const _AlreadyAppliedBottomSheet();
+      },
+    );
+  }
+
+  void _showApplicationSuccessSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return _InfoBottomSheet(
+          icon: Icons.check_circle_outline,
+          iconColor: Colors.greenAccent,
+          title: 'Candidature envoyée',
+          message:
+              'Ta candidature a bien été transmise à l’entreprise. Tu peux suivre son avancement depuis ton espace candidat.',
+          infoText: 'Retrouve cette candidature dans Profil > Candidatures.',
+          buttonText: 'Compris',
+          onPressed: () => Navigator.of(context).pop(),
+        );
+      },
+    );
+  }
+
+  void _showGenericErrorSheet(BuildContext context, String message) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return _InfoBottomSheet(
+          icon: Icons.error_outline,
+          iconColor: Colors.redAccent,
+          title: 'Action impossible',
+          message: message,
+          infoText: 'Réessaie dans quelques instants ou vérifie ta connexion.',
+          buttonText: 'Fermer',
+          onPressed: () => Navigator.of(context).pop(),
+        );
+      },
+    );
+  }
+
   Future<void> _toggleLike(BuildContext context, WidgetRef ref) async {
     try {
       await ref.read(jobInteractionsServiceProvider).toggleLike(job.id);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        _showGenericErrorSheet(context, e.toString());
       }
     }
   }
@@ -137,9 +186,7 @@ class JobInfoOverlay extends ConsumerWidget {
       await ref.read(jobInteractionsServiceProvider).toggleFavorite(job.id);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        _showGenericErrorSheet(context, e.toString());
       }
     }
   }
@@ -544,6 +591,155 @@ class _IncompleteProfileBottomSheet extends StatelessWidget {
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.68),
                   fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AlreadyAppliedBottomSheet extends StatelessWidget {
+  const _AlreadyAppliedBottomSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return _InfoBottomSheet(
+      icon: Icons.assignment_turned_in_outlined,
+      iconColor: Colors.greenAccent,
+      title: 'Candidature déjà envoyée',
+      message:
+          'Tu as déjà postulé à cette offre. Tu peux suivre son avancement depuis ton espace candidat.',
+      infoText: 'Retrouve cette candidature dans Profil > Candidatures.',
+      buttonText: 'Compris',
+      onPressed: () => Navigator.of(context).pop(),
+    );
+  }
+}
+
+class _InfoBottomSheet extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String message;
+  final String infoText;
+  final String buttonText;
+  final VoidCallback onPressed;
+
+  const _InfoBottomSheet({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.message,
+    required this.infoText,
+    required this.buttonText,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(22, 10, 22, bottomPadding + 22),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0E1627),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          const SizedBox(height: 22),
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.14),
+              shape: BoxShape.circle,
+              border: Border.all(color: iconColor.withOpacity(0.45)),
+            ),
+            child: Icon(icon, color: iconColor, size: 31),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 25,
+              fontWeight: FontWeight.w900,
+              height: 1.05,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              height: 1.35,
+              color: Colors.white.withOpacity(0.62),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 22),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF111A2C),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.blueAccent.withOpacity(0.14),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.info_outline,
+                    color: Colors.blueAccent,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    infoText,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: onPressed,
+              child: Text(
+                buttonText,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
                 ),
               ),
             ),
