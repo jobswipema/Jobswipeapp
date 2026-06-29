@@ -205,52 +205,6 @@ class AuthNotifier extends Notifier<AppUser> {
     state = AppUser.guest;
   }
 
-  // -------- BOUTONS DE TEST DEV --------
-
-  void loginAsCandidate() {
-    state = const AppUser(
-      id: 'candidate_001',
-      email: 'candidate@jobswipe.com',
-      displayName: 'Test Candidate',
-      role: UserRole.candidate,
-      isLoggedIn: true,
-    );
-  }
-
-  void loginAsPendingCompany() {
-    state = const AppUser(
-      id: 'company_001',
-      email: 'company@jobswipe.com',
-      displayName: 'TechVision Morocco',
-      role: UserRole.company,
-      isLoggedIn: true,
-      isVerifiedCompany: false,
-      verificationStatus: VerificationStatus.pending,
-    );
-  }
-
-  void loginAsVerifiedCompany() {
-    state = const AppUser(
-      id: 'company_002',
-      email: 'verified@jobswipe.com',
-      displayName: 'Verified Tech Corp',
-      role: UserRole.company,
-      isLoggedIn: true,
-      isVerifiedCompany: true,
-      verificationStatus: VerificationStatus.approved,
-    );
-  }
-
-  void loginAsAdmin() {
-    state = const AppUser(
-      id: 'admin_001',
-      email: 'admin@jobswipe.com',
-      displayName: 'Platform Admin',
-      role: UserRole.admin,
-      isLoggedIn: true,
-    );
-  }
-
   UserRole _parseRole(dynamic value) {
     switch (value) {
       case 'company':
