@@ -133,10 +133,13 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
     final scheduledAt = _scheduledAt();
 
     if (scheduledAt == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez choisir une date et une heure.'),
-        ),
+      await _showInfoSheet(
+        icon: Icons.event_busy_outlined,
+        iconColor: Colors.amber,
+        title: 'Créneau incomplet',
+        message:
+            'Veuillez choisir une date et une heure avant de planifier l’entretien.',
+        buttonText: 'Compris',
       );
       return;
     }
@@ -206,26 +209,63 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isReschedule
-                ? 'Entretien reporté avec succès.'
-                : 'Entretien planifié avec succès.',
-          ),
-        ),
+      setState(() => _isSaving = false);
+
+      await _showInfoSheet(
+        icon: Icons.event_available_outlined,
+        iconColor: Colors.greenAccent,
+        title: _isReschedule ? 'Entretien reporté' : 'Entretien planifié',
+        message: _isReschedule
+            ? 'L’entretien a été reporté avec succès. Le candidat recevra une notification.'
+            : 'L’entretien a été planifié avec succès. Le candidat recevra une notification.',
+        buttonText: 'Compris',
       );
 
-      Navigator.of(context).pop();
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur lors de l’enregistrement : $e')),
+      setState(() => _isSaving = false);
+
+      await _showInfoSheet(
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Enregistrement impossible',
+        message: 'Une erreur est survenue lors de l’enregistrement : $e',
+        buttonText: 'Fermer',
       );
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted && _isSaving) {
+        setState(() => _isSaving = false);
+      }
     }
+  }
+
+  Future<void> _showInfoSheet({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String message,
+    required String buttonText,
+  }) async {
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return _InterviewInfoBottomSheet(
+          icon: icon,
+          iconColor: iconColor,
+          title: title,
+          message: message,
+          buttonText: buttonText,
+        );
+      },
+    );
   }
 
   @override
@@ -593,6 +633,103 @@ class _ModeChip extends StatelessWidget {
             color: isSelected ? Colors.white : Colors.white.withOpacity(0.75),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _InterviewInfoBottomSheet extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String message;
+  final String buttonText;
+
+  const _InterviewInfoBottomSheet({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.message,
+    required this.buttonText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(22, 10, 22, bottomPadding + 22),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0E1627),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+
+          const SizedBox(height: 22),
+
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.14),
+              shape: BoxShape.circle,
+              border: Border.all(color: iconColor.withOpacity(0.45)),
+            ),
+            child: Icon(icon, color: iconColor, size: 31),
+          ),
+
+          const SizedBox(height: 18),
+
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 25,
+              fontWeight: FontWeight.w900,
+              height: 1.05,
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              height: 1.35,
+              color: Colors.white.withOpacity(0.62),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+
+          const SizedBox(height: 22),
+
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                buttonText,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
