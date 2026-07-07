@@ -18,10 +18,27 @@ class MainNavigationPage extends ConsumerStatefulWidget {
 class _MainNavigationPageState extends ConsumerState<MainNavigationPage> {
   int currentIndex = 0;
 
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+  Future<void> _showNavigationSheet({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String message,
+  }) async {
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return _NavigationInfoBottomSheet(
+          icon: icon,
+          iconColor: iconColor,
+          title: title,
+          message: message,
+        );
+      },
+    );
   }
 
   Widget _placeholderPage(String title) {
@@ -73,22 +90,30 @@ class _MainNavigationPageState extends ConsumerState<MainNavigationPage> {
     ];
   }
 
-  void _onTabTapped(int index) {
+  Future<void> _onTabTapped(int index) async {
     final user = ref.read(authProvider);
 
     if (user.role == UserRole.company && index == 2) {
       if (!user.isVerifiedCompany) {
-        _showSnack(
-          'Votre entreprise est en attente de validation. Vous ne pouvez pas encore publier d’offre.',
+        await _showNavigationSheet(
+          icon: Icons.verified_user_outlined,
+          iconColor: Colors.amber,
+          title: 'Entreprise en attente',
+          message:
+              'Votre entreprise est en attente de validation. Vous ne pouvez pas encore publier d’offre.',
         );
         return;
       }
 
-      Navigator.of(
+      if (!mounted) return;
+
+      await Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (context) => const CreateJobPage()));
       return;
     }
+
+    if (!mounted) return;
 
     setState(() {
       currentIndex = index;
@@ -113,6 +138,73 @@ class _MainNavigationPageState extends ConsumerState<MainNavigationPage> {
         onTap: _onTabTapped,
         type: BottomNavigationBarType.fixed,
         items: items,
+      ),
+    );
+  }
+}
+
+class _NavigationInfoBottomSheet extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String message;
+
+  const _NavigationInfoBottomSheet({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(22, 10, 22, bottomPadding + 22),
+      decoration: const BoxDecoration(
+        color: Color(0xFF101827),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 22),
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          Icon(icon, color: iconColor, size: 44),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.72),
+              height: 1.4,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ),
+        ],
       ),
     );
   }
