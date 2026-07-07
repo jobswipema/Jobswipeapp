@@ -33,9 +33,28 @@ class CompanyInterviewsPage extends ConsumerWidget {
         '${date.minute.toString().padLeft(2, '0')}';
   }
 
-  String _dateTimeForMessage(Timestamp? timestamp) {
-    if (timestamp == null) return '';
-    return '${_formatDate(timestamp)} à ${_formatTime(timestamp)}';
+  Future<void> _showCompanyInterviewsSheet({
+    required BuildContext context,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String message,
+  }) async {
+    if (!context.mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return _CompanyInterviewsInfoBottomSheet(
+          icon: icon,
+          iconColor: iconColor,
+          title: title,
+          message: message,
+        );
+      },
+    );
   }
 
   Future<void> _createNotification({
@@ -65,21 +84,40 @@ class CompanyInterviewsPage extends ConsumerWidget {
     final companyName = data['companyName']?.toString() ?? 'Entreprise';
     final jobTitle = data['jobTitle']?.toString() ?? 'le poste';
 
-    await FirebaseFirestore.instance
-        .collection('interviews')
-        .doc(doc.id)
-        .update({'status': 'done', 'updatedAt': FieldValue.serverTimestamp()});
+    try {
+      await FirebaseFirestore.instance
+          .collection('interviews')
+          .doc(doc.id)
+          .update({
+            'status': 'done',
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
 
-    await _createNotification(
-      candidateId: candidateId,
-      title: 'Entretien terminé',
-      message:
-          '$companyName a terminé votre entretien pour "$jobTitle". Une décision finale vous sera communiquée prochainement.',
-    );
+      await _createNotification(
+        candidateId: candidateId,
+        title: 'Entretien terminé',
+        message:
+            '$companyName a terminé votre entretien pour "$jobTitle". Une décision finale vous sera communiquée prochainement.',
+      );
 
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entretien marqué comme terminé.')),
+      if (!context.mounted) return;
+
+      await _showCompanyInterviewsSheet(
+        context: context,
+        icon: Icons.check_circle_outline,
+        iconColor: Colors.greenAccent,
+        title: 'Entretien terminé',
+        message: 'L’entretien a été marqué comme terminé.',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+
+      await _showCompanyInterviewsSheet(
+        context: context,
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Action impossible',
+        message: 'Une erreur est survenue lors de la mise à jour : $e',
       );
     }
   }
@@ -97,9 +135,14 @@ class CompanyInterviewsPage extends ConsumerWidget {
     final jobTitle = data['jobTitle']?.toString() ?? 'le poste';
 
     if (applicationId.trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Candidature introuvable.')));
+      await _showCompanyInterviewsSheet(
+        context: context,
+        icon: Icons.warning_amber_rounded,
+        iconColor: Colors.amber,
+        title: 'Candidature introuvable',
+        message:
+            'Impossible de retrouver la candidature associée à cet entretien.',
+      );
       return;
     }
 
@@ -116,28 +159,46 @@ class CompanyInterviewsPage extends ConsumerWidget {
       updateData['rejectedAt'] = FieldValue.serverTimestamp();
     }
 
-    await FirebaseFirestore.instance
-        .collection('applications')
-        .doc(applicationId)
-        .update(updateData);
+    try {
+      await FirebaseFirestore.instance
+          .collection('applications')
+          .doc(applicationId)
+          .update(updateData);
 
-    await _createNotification(
-      candidateId: candidateId,
-      title: 'Décision finale',
-      message: decision == 'accepted'
-          ? '$companyName a accepté votre candidature pour "$jobTitle".'
-          : '$companyName n’a pas retenu votre candidature pour "$jobTitle".',
-    );
+      await _createNotification(
+        candidateId: candidateId,
+        title: 'Décision finale',
+        message: decision == 'accepted'
+            ? '$companyName a accepté votre candidature pour "$jobTitle".'
+            : '$companyName n’a pas retenu votre candidature pour "$jobTitle".',
+      );
 
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            decision == 'accepted'
-                ? 'Candidature acceptée.'
-                : 'Candidature refusée.',
-          ),
-        ),
+      if (!context.mounted) return;
+
+      await _showCompanyInterviewsSheet(
+        context: context,
+        icon: decision == 'accepted'
+            ? Icons.check_circle_outline
+            : Icons.cancel_outlined,
+        iconColor: decision == 'accepted'
+            ? Colors.greenAccent
+            : Colors.redAccent,
+        title: decision == 'accepted'
+            ? 'Candidature acceptée'
+            : 'Candidature refusée',
+        message: decision == 'accepted'
+            ? 'La candidature a été acceptée avec succès.'
+            : 'La candidature a été refusée.',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+
+      await _showCompanyInterviewsSheet(
+        context: context,
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Décision impossible',
+        message: 'Une erreur est survenue lors de la décision finale : $e',
       );
     }
   }
@@ -149,36 +210,52 @@ class CompanyInterviewsPage extends ConsumerWidget {
     final data = doc.data();
     final applicationId = data['applicationId']?.toString() ?? '';
 
-    await FirebaseFirestore.instance
-        .collection('interviews')
-        .doc(doc.id)
-        .update({
-          'status': 'cancelled',
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-
-    if (applicationId.isNotEmpty) {
+    try {
       await FirebaseFirestore.instance
-          .collection('applications')
-          .doc(applicationId)
+          .collection('interviews')
+          .doc(doc.id)
           .update({
-            'status': 'reviewing',
-            'reviewingAt': FieldValue.serverTimestamp(),
+            'status': 'cancelled',
             'updatedAt': FieldValue.serverTimestamp(),
           });
-    }
 
-    await _createNotification(
-      candidateId: data['candidateId']?.toString() ?? '',
-      title: 'Entretien annulé',
-      message:
-          '${data['companyName'] ?? 'Entreprise'} a annulé votre entretien pour "${data['jobTitle'] ?? 'le poste'}".',
-    );
+      if (applicationId.isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('applications')
+            .doc(applicationId)
+            .update({
+              'status': 'reviewing',
+              'reviewingAt': FieldValue.serverTimestamp(),
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+      }
 
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Entretien annulé.')));
+      await _createNotification(
+        candidateId: data['candidateId']?.toString() ?? '',
+        title: 'Entretien annulé',
+        message:
+            '${data['companyName'] ?? 'Entreprise'} a annulé votre entretien pour "${data['jobTitle'] ?? 'le poste'}".',
+      );
+
+      if (!context.mounted) return;
+
+      await _showCompanyInterviewsSheet(
+        context: context,
+        icon: Icons.cancel_outlined,
+        iconColor: Colors.redAccent,
+        title: 'Entretien annulé',
+        message: 'L’entretien a été annulé avec succès.',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+
+      await _showCompanyInterviewsSheet(
+        context: context,
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Annulation impossible',
+        message: 'Une erreur est survenue lors de l’annulation : $e',
+      );
     }
   }
 
@@ -555,6 +632,73 @@ class _InfoLine extends StatelessWidget {
                 color: Colors.white.withOpacity(0.72),
                 height: 1.35,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompanyInterviewsInfoBottomSheet extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String message;
+
+  const _CompanyInterviewsInfoBottomSheet({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(22, 10, 22, bottomPadding + 22),
+      decoration: const BoxDecoration(
+        color: Color(0xFF101827),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 22),
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          Icon(icon, color: iconColor, size: 44),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.72),
+              height: 1.4,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
             ),
           ),
         ],

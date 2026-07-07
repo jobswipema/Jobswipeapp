@@ -21,6 +21,30 @@ class AdminDashboardPage extends ConsumerStatefulWidget {
 class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
   int _selectedTab = 0;
 
+  Future<void> _showAdminDashboardSheet({
+    required BuildContext context,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String message,
+  }) async {
+    if (!context.mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return _AdminDashboardInfoBottomSheet(
+          icon: icon,
+          iconColor: iconColor,
+          title: title,
+          message: message,
+        );
+      },
+    );
+  }
+
   Future<void> _confirmCompanyStatusUpdate({
     required BuildContext context,
     required String userId,
@@ -84,51 +108,75 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
   }) async {
     final isApproved = status == 'approved';
 
-    await FirebaseFirestore.instance.collection('users').doc(userId).update({
-      'verificationStatus': status,
-      'isVerifiedCompany': isApproved,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-
-    String title;
-    String message;
+    String notificationTitle;
+    String notificationMessage;
 
     if (status == 'approved') {
-      title = 'Entreprise validée';
-      message =
+      notificationTitle = 'Entreprise validée';
+      notificationMessage =
           'Votre compte entreprise a été validé. Vous pouvez maintenant publier des offres sur JobSwipe.';
     } else if (status == 'rejected') {
-      title = 'Validation refusée';
-      message =
+      notificationTitle = 'Validation refusée';
+      notificationMessage =
           'La validation de votre compte entreprise a été refusée. Veuillez vérifier vos informations ou contacter l’administrateur.';
     } else {
-      title = 'Validation en attente';
-      message =
+      notificationTitle = 'Validation en attente';
+      notificationMessage =
           'Votre compte entreprise a été remis en attente de validation par l’administrateur.';
     }
 
-    await FirebaseFirestore.instance.collection('notifications').add({
-      'userId': userId,
-      'title': title,
-      'message': message,
-      'type': 'company_verification',
-      'isRead': false,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(userId).update({
+        'verificationStatus': status,
+        'isVerifiedCompany': isApproved,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
 
-    if (!context.mounted) return;
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'userId': userId,
+        'title': notificationTitle,
+        'message': notificationMessage,
+        'type': 'company_verification',
+        'isRead': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          status == 'approved'
-              ? 'Entreprise validée avec succès.'
-              : status == 'rejected'
-              ? 'Entreprise refusée.'
-              : 'Entreprise remise en attente.',
-        ),
-      ),
-    );
+      if (!context.mounted) return;
+
+      await _showAdminDashboardSheet(
+        context: context,
+        icon: status == 'approved'
+            ? Icons.verified_outlined
+            : status == 'rejected'
+            ? Icons.cancel_outlined
+            : Icons.watch_later_outlined,
+        iconColor: status == 'approved'
+            ? Colors.greenAccent
+            : status == 'rejected'
+            ? Colors.redAccent
+            : Colors.amber,
+        title: status == 'approved'
+            ? 'Entreprise validée'
+            : status == 'rejected'
+            ? 'Entreprise refusée'
+            : 'Entreprise remise en attente',
+        message: status == 'approved'
+            ? 'L’entreprise a été validée avec succès.'
+            : status == 'rejected'
+            ? 'L’entreprise a été refusée.'
+            : 'L’entreprise a été remise en attente de validation.',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+
+      await _showAdminDashboardSheet(
+        context: context,
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Action impossible',
+        message: 'Une erreur est survenue lors de la mise à jour : $e',
+      );
+    }
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _usersStream() {
@@ -1410,6 +1458,73 @@ class _InfoCard extends StatelessWidget {
         border: Border.all(color: Colors.white10),
       ),
       child: Text(text),
+    );
+  }
+}
+
+class _AdminDashboardInfoBottomSheet extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String message;
+
+  const _AdminDashboardInfoBottomSheet({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(22, 10, 22, bottomPadding + 22),
+      decoration: const BoxDecoration(
+        color: Color(0xFF101827),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 22),
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          Icon(icon, color: iconColor, size: 44),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.72),
+              height: 1.4,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -598,6 +598,30 @@ class _CompactJobRow extends StatelessWidget {
 
   const _CompactJobRow({required this.job, required this.applicationsCount});
 
+  Future<void> _showCompanyDashboardSheet({
+    required BuildContext context,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String message,
+  }) async {
+    if (!context.mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return _CompanyDashboardInfoBottomSheet(
+          icon: icon,
+          iconColor: iconColor,
+          title: title,
+          message: message,
+        );
+      },
+    );
+  }
+
   Future<void> _updateJobStatus({
     required BuildContext context,
     required String jobId,
@@ -653,23 +677,40 @@ class _CompactJobRow extends StatelessWidget {
 
     if (action == 'delete') {
       if (applicationsCount > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
+        await _showCompanyDashboardSheet(
+          context: context,
+          icon: Icons.warning_amber_rounded,
+          iconColor: Colors.amber,
+          title: 'Suppression impossible',
+          message:
               'Impossible de supprimer une offre ayant déjà des candidatures. Vous pouvez la désactiver ou la clôturer.',
-            ),
-          ),
         );
         return;
       }
 
-      await FirebaseFirestore.instance.collection('jobs').doc(jobId).delete();
+      try {
+        await FirebaseFirestore.instance.collection('jobs').doc(jobId).delete();
 
-      if (!context.mounted) return;
+        if (!context.mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Offre supprimée.')));
+        await _showCompanyDashboardSheet(
+          context: context,
+          icon: Icons.delete_outline,
+          iconColor: Colors.greenAccent,
+          title: 'Offre supprimée',
+          message: 'L’offre a été supprimée avec succès.',
+        );
+      } catch (e) {
+        if (!context.mounted) return;
+
+        await _showCompanyDashboardSheet(
+          context: context,
+          icon: Icons.error_outline,
+          iconColor: Colors.redAccent,
+          title: 'Suppression impossible',
+          message: 'Une erreur est survenue lors de la suppression : $e',
+        );
+      }
 
       return;
     }
@@ -695,24 +736,40 @@ class _CompactJobRow extends StatelessWidget {
       updateData['closedReason'] = 'hired';
     }
 
-    await FirebaseFirestore.instance
-        .collection('jobs')
-        .doc(jobId)
-        .update(updateData);
+    try {
+      await FirebaseFirestore.instance
+          .collection('jobs')
+          .doc(jobId)
+          .update(updateData);
 
-    if (!context.mounted) return;
+      if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          action == 'pause'
-              ? 'Offre désactivée.'
-              : action == 'open'
-              ? 'Offre réactivée.'
-              : 'Offre clôturée.',
-        ),
-      ),
-    );
+      await _showCompanyDashboardSheet(
+        context: context,
+        icon: Icons.check_circle_outline,
+        iconColor: Colors.greenAccent,
+        title: action == 'pause'
+            ? 'Offre désactivée'
+            : action == 'open'
+            ? 'Offre réactivée'
+            : 'Offre clôturée',
+        message: action == 'pause'
+            ? 'L’offre a été désactivée avec succès.'
+            : action == 'open'
+            ? 'L’offre a été réactivée avec succès.'
+            : 'Le recrutement a été clôturé avec succès.',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+
+      await _showCompanyDashboardSheet(
+        context: context,
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Mise à jour impossible',
+        message: 'Une erreur est survenue lors de la mise à jour : $e',
+      );
+    }
   }
 
   Color _statusColor(String jobStatus, bool isActive) {
@@ -821,7 +878,7 @@ class _CompactJobRow extends StatelessWidget {
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, color: Colors.white54),
               color: const Color(0xFF161D2E),
-              onSelected: (value) {
+              onSelected: (value) async {
                 if (value == 'applications') {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -832,15 +889,18 @@ class _CompactJobRow extends StatelessWidget {
                 }
 
                 if (value == 'edit') {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Modification de l’offre à ajouter.'),
-                    ),
+                  await _showCompanyDashboardSheet(
+                    context: context,
+                    icon: Icons.edit_outlined,
+                    iconColor: Colors.amber,
+                    title: 'Modification indisponible',
+                    message:
+                        'La modification de l’offre sera ajoutée prochainement.',
                   );
                   return;
                 }
 
-                _updateJobStatus(
+                await _updateJobStatus(
                   context: context,
                   jobId: job.id,
                   action: value,
@@ -880,6 +940,73 @@ class _CompactJobRow extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CompanyDashboardInfoBottomSheet extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String message;
+
+  const _CompanyDashboardInfoBottomSheet({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(22, 10, 22, bottomPadding + 22),
+      decoration: const BoxDecoration(
+        color: Color(0xFF101827),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 22),
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          Icon(icon, color: iconColor, size: 44),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.72),
+              height: 1.4,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ),
+        ],
       ),
     );
   }

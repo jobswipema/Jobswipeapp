@@ -8,11 +8,39 @@ class CandidateDetailsPage extends StatelessWidget {
 
   const CandidateDetailsPage({super.key, required this.candidateData});
 
+  Future<void> _showCandidateDetailsSheet({
+    required BuildContext context,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String message,
+  }) async {
+    if (!context.mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return _CandidateDetailsInfoBottomSheet(
+          icon: icon,
+          iconColor: iconColor,
+          title: title,
+          message: message,
+        );
+      },
+    );
+  }
+
   Future<void> _openCv(BuildContext context, String url) async {
     if (url.trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('CV non disponible.')));
+      await _showCandidateDetailsSheet(
+        context: context,
+        icon: Icons.picture_as_pdf_outlined,
+        iconColor: Colors.amber,
+        title: 'CV non disponible',
+        message: 'Aucun CV n’est associé à cette candidature.',
+      );
       return;
     }
 
@@ -22,8 +50,12 @@ class CandidateDetailsPage extends StatelessWidget {
     );
 
     if (!launched && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossible d’ouvrir le CV.')),
+      await _showCandidateDetailsSheet(
+        context: context,
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Ouverture impossible',
+        message: 'Impossible d’ouvrir le CV du candidat.',
       );
     }
   }
@@ -62,9 +94,13 @@ class CandidateDetailsPage extends StatelessWidget {
     String status,
   ) async {
     if (applicationId.trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Candidature introuvable.')));
+      await _showCandidateDetailsSheet(
+        context: context,
+        icon: Icons.warning_amber_rounded,
+        iconColor: Colors.amber,
+        title: 'Candidature introuvable',
+        message: 'Impossible de retrouver la candidature à mettre à jour.',
+      );
       return;
     }
 
@@ -89,21 +125,37 @@ class CandidateDetailsPage extends StatelessWidget {
       updateData['rejectedAt'] = FieldValue.serverTimestamp();
     }
 
-    await FirebaseFirestore.instance
-        .collection('applications')
-        .doc(applicationId)
-        .update(updateData);
+    try {
+      await FirebaseFirestore.instance
+          .collection('applications')
+          .doc(applicationId)
+          .update(updateData);
 
-    await _createStatusNotification(
-      candidateId: candidateId,
-      jobTitle: jobTitle,
-      companyName: companyName,
-      status: status,
-    );
+      await _createStatusNotification(
+        candidateId: candidateId,
+        jobTitle: jobTitle,
+        companyName: companyName,
+        status: status,
+      );
 
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Statut de candidature mis à jour.')),
+      if (!context.mounted) return;
+
+      await _showCandidateDetailsSheet(
+        context: context,
+        icon: Icons.check_circle_outline,
+        iconColor: Colors.greenAccent,
+        title: 'Statut mis à jour',
+        message: 'Le statut de la candidature a été mis à jour avec succès.',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+
+      await _showCandidateDetailsSheet(
+        context: context,
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Mise à jour impossible',
+        message: 'Une erreur est survenue lors de la mise à jour : $e',
       );
     }
   }
@@ -595,6 +647,73 @@ class _ActionButton extends StatelessWidget {
         onPressed: onPressed,
         icon: Icon(icon),
         label: Text(label),
+      ),
+    );
+  }
+}
+
+class _CandidateDetailsInfoBottomSheet extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String message;
+
+  const _CandidateDetailsInfoBottomSheet({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(22, 10, 22, bottomPadding + 22),
+      decoration: const BoxDecoration(
+        color: Color(0xFF101827),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 22),
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          Icon(icon, color: iconColor, size: 44),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.72),
+              height: 1.4,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ),
+        ],
       ),
     );
   }
