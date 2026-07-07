@@ -145,6 +145,29 @@ class _EditCandidateProfilePageState
         skills.length >= 3;
   }
 
+  Future<void> _showEditProfileSheet({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String message,
+  }) async {
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return _EditProfileInfoBottomSheet(
+          icon: icon,
+          iconColor: iconColor,
+          title: title,
+          message: message,
+        );
+      },
+    );
+  }
+
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -194,16 +217,25 @@ class _EditCandidateProfilePageState
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profil mis à jour avec succès.')),
+      await _showEditProfileSheet(
+        icon: Icons.check_circle_outline,
+        iconColor: Colors.greenAccent,
+        title: 'Profil mis à jour',
+        message: 'Vos informations ont été enregistrées avec succès.',
       );
 
-      Navigator.of(context).pop();
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur lors de la mise à jour : $e')),
+      await _showEditProfileSheet(
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Mise à jour impossible',
+        message:
+            'Une erreur est survenue lors de la mise à jour du profil : $e',
       );
     } finally {
       if (mounted) {
@@ -393,6 +425,90 @@ class _EditCandidateProfilePageState
                   ),
                 ),
               ),
+      ),
+    );
+  }
+}
+
+class _EditProfileInfoBottomSheet extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String message;
+
+  const _EditProfileInfoBottomSheet({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(22, 10, 22, bottomPadding + 22),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0E1627),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          const SizedBox(height: 22),
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.14),
+              shape: BoxShape.circle,
+              border: Border.all(color: iconColor.withOpacity(0.45)),
+            ),
+            child: Icon(icon, color: iconColor, size: 31),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 25,
+              fontWeight: FontWeight.w900,
+              height: 1.05,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              height: 1.35,
+              color: Colors.white.withOpacity(0.62),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Compris',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
