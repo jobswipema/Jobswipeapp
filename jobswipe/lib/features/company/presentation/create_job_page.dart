@@ -38,11 +38,39 @@ class _CreateJobPageState extends State<CreateJobPage> {
     super.dispose();
   }
 
+  Future<void> _showCreateJobSheet({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String message,
+  }) async {
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return _CreateJobInfoBottomSheet(
+          icon: icon,
+          iconColor: iconColor,
+          title: title,
+          message: message,
+        );
+      },
+    );
+  }
+
   Future<void> _selectAndUploadVideo() async {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      _showSnack('Utilisateur non connecté.');
+      await _showCreateJobSheet(
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Utilisateur non connecté',
+        message: 'Veuillez vous reconnecter avant de téléverser une vidéo.',
+      );
       return;
     }
 
@@ -52,17 +80,27 @@ class _CreateJobPageState extends State<CreateJobPage> {
       withData: true,
     );
 
-    if (result == null || result.files.isEmpty) return;
+    if (!mounted || result == null || result.files.isEmpty) return;
 
     final file = result.files.single;
 
     if (file.bytes == null) {
-      _showSnack('Impossible de lire la vidéo sélectionnée.');
+      await _showCreateJobSheet(
+        icon: Icons.video_file_outlined,
+        iconColor: Colors.amber,
+        title: 'Vidéo illisible',
+        message: 'Impossible de lire la vidéo sélectionnée.',
+      );
       return;
     }
 
     if (file.size > 50 * 1024 * 1024) {
-      _showSnack('La vidéo ne doit pas dépasser 50 Mo.');
+      await _showCreateJobSheet(
+        icon: Icons.warning_amber_rounded,
+        iconColor: Colors.amber,
+        title: 'Vidéo trop volumineuse',
+        message: 'La vidéo ne doit pas dépasser 50 Mo.',
+      );
       return;
     }
 
@@ -75,14 +113,28 @@ class _CreateJobPageState extends State<CreateJobPage> {
         folder: 'jobswipe/videos/${user.uid}',
       );
 
+      if (!mounted) return;
+
       setState(() {
         _videoUrl = videoUrl;
         _videoFileName = file.name;
       });
 
-      _showSnack('Vidéo téléversée avec succès.');
+      await _showCreateJobSheet(
+        icon: Icons.check_circle_outline,
+        iconColor: Colors.greenAccent,
+        title: 'Vidéo téléversée',
+        message: 'La vidéo de l’offre a été ajoutée avec succès.',
+      );
     } catch (e) {
-      _showSnack('Erreur upload vidéo : $e');
+      if (!mounted) return;
+
+      await _showCreateJobSheet(
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Erreur upload vidéo',
+        message: 'Une erreur est survenue lors du téléversement : $e',
+      );
     } finally {
       if (mounted) {
         setState(() => _isUploadingVideo = false);
@@ -94,15 +146,25 @@ class _CreateJobPageState extends State<CreateJobPage> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_videoUrl.isEmpty) {
-      _showSnack('Veuillez téléverser une vidéo pour publier l’offre.');
+      await _showCreateJobSheet(
+        icon: Icons.video_library_outlined,
+        iconColor: Colors.amber,
+        title: 'Vidéo requise',
+        message: 'Veuillez téléverser une vidéo pour publier l’offre.',
+      );
       return;
     }
-    final thumbnailUrl = CloudinaryService.generateVideoThumbnailUrl(_videoUrl);
 
+    final thumbnailUrl = CloudinaryService.generateVideoThumbnailUrl(_videoUrl);
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      _showSnack('Utilisateur non connecté.');
+      await _showCreateJobSheet(
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Utilisateur non connecté',
+        message: 'Veuillez vous reconnecter avant de publier une offre.',
+      );
       return;
     }
 
@@ -145,21 +207,30 @@ class _CreateJobPageState extends State<CreateJobPage> {
 
       if (!mounted) return;
 
-      _showSnack('Offre publiée avec succès.');
-      Navigator.of(context).pop();
+      await _showCreateJobSheet(
+        icon: Icons.check_circle_outline,
+        iconColor: Colors.greenAccent,
+        title: 'Offre publiée',
+        message: 'Votre offre a été publiée avec succès.',
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
     } catch (e) {
-      _showSnack('Erreur publication offre : $e');
+      if (!mounted) return;
+
+      await _showCreateJobSheet(
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Publication impossible',
+        message: 'Une erreur est survenue lors de la publication : $e',
+      );
     } finally {
       if (mounted) {
         setState(() => _isPublishing = false);
       }
     }
-  }
-
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   InputDecoration _inputDecoration(String label, IconData icon) {
@@ -555,6 +626,73 @@ class _CreateJobPageState extends State<CreateJobPage> {
         border: Border.all(color: Colors.blueAccent.withOpacity(0.55)),
       ),
       child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+    );
+  }
+}
+
+class _CreateJobInfoBottomSheet extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String message;
+
+  const _CreateJobInfoBottomSheet({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(22, 10, 22, bottomPadding + 22),
+      decoration: const BoxDecoration(
+        color: Color(0xFF101827),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 22),
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          Icon(icon, color: iconColor, size: 44),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.72),
+              height: 1.4,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
