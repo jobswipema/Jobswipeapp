@@ -75,6 +75,12 @@ class ApplicationsService {
 
     final candidateData = candidateDoc.data() ?? {};
 
+    final isOpenToWork = candidateData['isOpenToWork'] != false;
+
+    if (!isOpenToWork) {
+      throw 'Activez Open to Work dans votre profil avant de postuler.';
+    }
+
     if (!_hasMinimumCandidateProfile(candidateData)) {
       final missingFields = _missingCandidateProfileFields(candidateData);
 

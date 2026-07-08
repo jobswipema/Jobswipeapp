@@ -258,6 +258,46 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
     }
   }
 
+  Future<void> _toggleOpenToWork(bool value) async {
+    final user = ref.read(authProvider);
+
+    try {
+      final updateData = <String, dynamic>{
+        'isOpenToWork': value,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (!value) {
+        updateData['isTalentVisible'] = false;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.id)
+          .update(updateData);
+
+      if (!mounted) return;
+
+      await _showProfileSheet(
+        icon: value ? Icons.work_outline : Icons.work_off_outlined,
+        iconColor: value ? Colors.greenAccent : Colors.amber,
+        title: value ? 'Open to Work activé' : 'Open to Work désactivé',
+        message: value
+            ? 'Vous pouvez maintenant postuler aux offres et rendre votre CV vidéo visible aux entreprises.'
+            : 'Vous pouvez toujours consulter les offres, mais vous ne pouvez plus postuler. Votre visibilité talents a été désactivée.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      await _showProfileSheet(
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Modification impossible',
+        message: 'Impossible de modifier votre disponibilité : $e',
+      );
+    }
+  }
+
   Future<void> _toggleTalentVisibility(bool value) async {
     final user = ref.read(authProvider);
 
@@ -371,6 +411,7 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
             final videoCvThumbnailUrl =
                 data['videoCvThumbnailUrl']?.toString() ?? '';
             final isTalentVisible = data['isTalentVisible'] == true;
+            final isOpenToWork = data['isOpenToWork'] != false;
             final rawProfileCompletionPercent =
                 (data['profileCompletionPercent'] is num)
                 ? (data['profileCompletionPercent'] as num).toInt()
@@ -416,6 +457,9 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
                         email: email,
                         city: city,
                         phone: phone,
+                        isOpenToWork: isOpenToWork,
+                        onToggleOpenToWork: () =>
+                            _toggleOpenToWork(!isOpenToWork),
                       ),
                       const SizedBox(height: 18),
                       _ProfileCompletionCard(
@@ -1009,6 +1053,8 @@ class _ProfileHeader extends StatelessWidget {
   final String email;
   final String city;
   final String phone;
+  final bool isOpenToWork;
+  final VoidCallback onToggleOpenToWork;
 
   const _ProfileHeader({
     required this.displayName,
@@ -1016,6 +1062,8 @@ class _ProfileHeader extends StatelessWidget {
     required this.email,
     required this.city,
     required this.phone,
+    required this.isOpenToWork,
+    required this.onToggleOpenToWork,
   });
 
   @override
@@ -1024,76 +1072,183 @@ class _ProfileHeader extends StatelessWidget {
         ? displayName.trim()[0].toUpperCase()
         : 'C';
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF161D2E),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 32,
-            backgroundColor: Colors.blueAccent,
-            child: Text(
-              firstLetter,
-              style: const TextStyle(
-                fontSize: 27,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(24),
+      onTap: onToggleOpenToWork,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOut,
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFF161D2E),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isOpenToWork
+                ? Colors.greenAccent.withOpacity(0.55)
+                : Colors.white10,
+            width: isOpenToWork ? 1.4 : 1,
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          boxShadow: isOpenToWork
+              ? [
+                  BoxShadow(
+                    color: Colors.greenAccent.withOpacity(0.14),
+                    blurRadius: 24,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
+              : [],
+        ),
+        child: Row(
+          children: [
+            Stack(
+              alignment: Alignment.center,
               children: [
-                Text(
-                  displayName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 23,
-                    fontWeight: FontWeight.bold,
+                if (isOpenToWork)
+                  Container(
+                    width: 78,
+                    height: 78,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.greenAccent.withOpacity(0.55),
+                        width: 2,
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.70),
-                  ),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  '$city • $phone',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.48),
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  email,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.48),
+                CircleAvatar(
+                  radius: 32,
+                  backgroundColor: isOpenToWork
+                      ? Colors.greenAccent
+                      : Colors.blueAccent,
+                  child: Text(
+                    firstLetter,
+                    style: TextStyle(
+                      fontSize: 27,
+                      fontWeight: FontWeight.bold,
+                      color: isOpenToWork
+                          ? const Color(0xFF06140F)
+                          : Colors.white,
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 23,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isOpenToWork
+                              ? Colors.greenAccent.withOpacity(0.16)
+                              : Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: isOpenToWork
+                                ? Colors.greenAccent.withOpacity(0.65)
+                                : Colors.white12,
+                          ),
+                        ),
+                        child: Text(
+                          isOpenToWork ? 'OPEN TO WORK' : 'INDISPONIBLE',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            color: isOpenToWork
+                                ? Colors.greenAccent
+                                : Colors.white38,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.70),
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    '$city • $phone',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.48),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    email,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.48),
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  Row(
+                    children: [
+                      Icon(
+                        isOpenToWork
+                            ? Icons.touch_app_outlined
+                            : Icons.work_off_outlined,
+                        size: 15,
+                        color: isOpenToWork ? Colors.greenAccent : Colors.amber,
+                      ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          isOpenToWork
+                              ? 'Appuyez pour désactiver Open to Work'
+                              : 'Appuyez pour activer Open to Work',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isOpenToWork
+                                ? Colors.greenAccent.withOpacity(0.85)
+                                : Colors.amber.withOpacity(0.90),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
