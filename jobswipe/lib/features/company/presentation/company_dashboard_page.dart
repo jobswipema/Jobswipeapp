@@ -181,6 +181,16 @@ class _CompanyDashboardPageState extends ConsumerState<CompanyDashboardPage> {
                               _CompanyTabs(
                                 selectedIndex: _selectedTab,
                                 onChanged: (index) {
+                                  if (index == 2) {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const CompanyTalentsFeedPage(),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
                                   setState(() => _selectedTab = index);
                                 },
                               ),
@@ -198,8 +208,6 @@ class _CompanyDashboardPageState extends ConsumerState<CompanyDashboardPage> {
                                   jobs: jobs,
                                   applications: applications,
                                 )
-                              else if (_selectedTab == 2)
-                                const CompanyTalentsFeedPage()
                               else if (_selectedTab == 3)
                                 const _InterviewsTab()
                               else

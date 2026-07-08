@@ -1,10 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:jobswipe/features/company/presentation/candidate_video_cv_player_page.dart';
+import 'package:video_player/video_player.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class CompanyTalentsFeedPage extends StatelessWidget {
+class CompanyTalentsFeedPage extends StatefulWidget {
   const CompanyTalentsFeedPage({super.key});
+
+  @override
+  State<CompanyTalentsFeedPage> createState() => _CompanyTalentsFeedPageState();
+}
+
+class _CompanyTalentsFeedPageState extends State<CompanyTalentsFeedPage> {
+  int _currentIndex = 0;
 
   Stream<List<Map<String, dynamic>>> _talentsStream() {
     return FirebaseFirestore.instance
@@ -33,28 +40,7 @@ class CompanyTalentsFeedPage extends StatelessWidget {
         });
   }
 
-  void _openTalentVideo(BuildContext context, Map<String, dynamic> talent) {
-    final videoCvUrl = talent['videoCvUrl']?.toString() ?? '';
-
-    if (videoCvUrl.trim().isEmpty) return;
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CandidateVideoCvPlayerPage(
-          candidateName: talent['displayName']?.toString() ?? 'Candidat',
-          jobTitle: talent['title']?.toString() ?? '',
-          videoCvUrl: videoCvUrl,
-          videoCvThumbnailUrl: talent['videoCvThumbnailUrl']?.toString() ?? '',
-          candidateBio: talent['bio']?.toString() ?? '',
-          candidateSkills: talent['skills'] is List
-              ? (talent['skills'] as List).join(', ')
-              : talent['skills']?.toString() ?? '',
-        ),
-      ),
-    );
-  }
-
-  void _openTalentProfile(BuildContext context, Map<String, dynamic> talent) {
+  void _openTalentProfile(Map<String, dynamic> talent) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => TalentProfileDetailsPage(talent: talent),
@@ -62,287 +48,469 @@ class CompanyTalentsFeedPage extends StatelessWidget {
     );
   }
 
+  Future<void> _openCv(Map<String, dynamic> talent) async {
+    final cvUrl = talent['cvUrl']?.toString() ?? '';
+
+    if (cvUrl.trim().isEmpty) return;
+
+    await launchUrl(Uri.parse(cvUrl), mode: LaunchMode.externalApplication);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _talentsStream(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return const _TalentsInfoState(
-            icon: Icons.error_outline,
-            title: 'Chargement impossible',
-            message: 'Impossible de charger le feed talents pour le moment.',
-          );
-        }
+    return Scaffold(
+      backgroundColor: const Color(0xFF020713),
+      body: SafeArea(
+        child: StreamBuilder<List<Map<String, dynamic>>>(
+          stream: _talentsStream(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return _TalentsEmptyState(
+                icon: Icons.error_outline,
+                title: 'Chargement impossible',
+                message: 'Impossible de charger les talents pour le moment.',
+                onBack: () => Navigator.of(context).pop(),
+              );
+            }
 
-        if (!snapshot.hasData) {
-          return const Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-        final talents = snapshot.data!;
+            final talents = snapshot.data!;
 
-        if (talents.isEmpty) {
-          return const _TalentsInfoState(
-            icon: Icons.video_library_outlined,
-            title: 'Aucun talent visible',
-            message:
-                'Les candidats Open to Work qui activent la visibilité de leur CV vidéo apparaîtront ici.',
-          );
-        }
+            if (talents.isEmpty) {
+              return _TalentsEmptyState(
+                icon: Icons.video_library_outlined,
+                title: 'Aucun talent visible',
+                message:
+                    'Les candidats Open to Work qui activent leur CV vidéo apparaîtront ici.',
+                onBack: () => Navigator.of(context).pop(),
+              );
+            }
 
-        return Column(
-          children: talents.map((talent) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _TalentVideoCard(
-                talent: talent,
-                onOpenVideo: () => _openTalentVideo(context, talent),
-                onOpenProfile: () => _openTalentProfile(context, talent),
-              ),
+            return PageView.builder(
+              scrollDirection: Axis.vertical,
+              itemCount: talents.length,
+              onPageChanged: (index) {
+                setState(() => _currentIndex = index);
+              },
+              itemBuilder: (context, index) {
+                final talent = talents[index];
+
+                return _TalentVideoSlide(
+                  talent: talent,
+                  isActive: index == _currentIndex,
+                  onOpenProfile: () => _openTalentProfile(talent),
+                  onOpenCv: () => _openCv(talent),
+                );
+              },
             );
-          }).toList(),
-        );
-      },
+          },
+        ),
+      ),
     );
   }
 }
 
-class _TalentVideoCard extends StatelessWidget {
+class _TalentVideoSlide extends StatefulWidget {
   final Map<String, dynamic> talent;
-  final VoidCallback onOpenVideo;
+  final bool isActive;
   final VoidCallback onOpenProfile;
+  final VoidCallback onOpenCv;
 
-  const _TalentVideoCard({
+  const _TalentVideoSlide({
     required this.talent,
-    required this.onOpenVideo,
+    required this.isActive,
     required this.onOpenProfile,
+    required this.onOpenCv,
   });
+
+  @override
+  State<_TalentVideoSlide> createState() => _TalentVideoSlideState();
+}
+
+class _TalentVideoSlideState extends State<_TalentVideoSlide> {
+  VideoPlayerController? _controller;
+
+  bool _isInitialized = false;
+  bool _isMuted = false;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initVideo();
+  }
+
+  Future<void> _initVideo() async {
+    final videoUrl = widget.talent['videoCvUrl']?.toString() ?? '';
+
+    if (videoUrl.trim().isEmpty) {
+      setState(() => _hasError = true);
+      return;
+    }
+
+    try {
+      final controller = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+      _controller = controller;
+
+      await controller.initialize();
+      await controller.setLooping(true);
+      await controller.setVolume(1);
+
+      if (widget.isActive) {
+        await controller.play();
+      }
+
+      if (!mounted) return;
+
+      setState(() => _isInitialized = true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _hasError = true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _TalentVideoSlide oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final controller = _controller;
+
+    if (controller == null || !_isInitialized) return;
+
+    if (widget.isActive && !oldWidget.isActive) {
+      controller.play();
+    } else if (!widget.isActive && oldWidget.isActive) {
+      controller.pause();
+    }
+  }
+
+  void _togglePlayPause() {
+    final controller = _controller;
+
+    if (controller == null || !_isInitialized) return;
+
+    setState(() {
+      if (controller.value.isPlaying) {
+        controller.pause();
+      } else {
+        controller.play();
+      }
+    });
+  }
+
+  void _toggleMute() {
+    final controller = _controller;
+
+    if (controller == null || !_isInitialized) return;
+
+    setState(() {
+      _isMuted = !_isMuted;
+      controller.setVolume(_isMuted ? 0 : 1);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final displayName =
-        talent['displayName']?.toString().trim().isNotEmpty == true
-        ? talent['displayName'].toString()
+        widget.talent['displayName']?.toString().trim().isNotEmpty == true
+        ? widget.talent['displayName'].toString()
         : 'Candidat';
 
-    final title = talent['title']?.toString() ?? '';
-    final city = talent['city']?.toString() ?? '';
-    final bio = talent['bio']?.toString() ?? '';
-    final thumbnailUrl = talent['videoCvThumbnailUrl']?.toString() ?? '';
+    final title = widget.talent['title']?.toString() ?? '';
+    final city = widget.talent['city']?.toString() ?? '';
+    final bio = widget.talent['bio']?.toString() ?? '';
+    final cvUrl = widget.talent['cvUrl']?.toString() ?? '';
 
-    final skills = talent['skills'] is List
-        ? (talent['skills'] as List).map((e) => e.toString()).toList()
+    final skills = widget.talent['skills'] is List
+        ? (widget.talent['skills'] as List).map((e) => e.toString()).toList()
         : <String>[];
 
-    return SizedBox(
-      height: 620,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (thumbnailUrl.trim().isNotEmpty)
-              Image.network(
-                thumbnailUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) {
-                  return Container(color: const Color(0xFF161D2E));
-                },
-              )
-            else
-              Container(color: const Color(0xFF161D2E)),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        _buildVideoBackground(),
 
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.black.withOpacity(0.18),
-                    Colors.black.withOpacity(0.12),
-                    Colors.black.withOpacity(0.88),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.black.withOpacity(0.28),
+                Colors.transparent,
+                Colors.black.withOpacity(0.86),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+        ),
+
+        Positioned(
+          top: 8,
+          left: 8,
+          child: IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
+          ),
+        ),
+
+        Positioned(
+          top: 8,
+          right: 8,
+          child: IconButton(
+            onPressed: _toggleMute,
+            icon: Icon(
+              _isMuted ? Icons.volume_off : Icons.volume_up,
+              color: Colors.white,
+              size: 30,
+            ),
+          ),
+        ),
+
+        Positioned(
+          top: 62,
+          left: 20,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.greenAccent.withOpacity(0.14),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: Colors.greenAccent.withOpacity(0.48)),
+            ),
+            child: const Text(
+              'OPEN TO WORK',
+              style: TextStyle(
+                color: Colors.greenAccent,
+                fontWeight: FontWeight.w900,
+                fontSize: 12,
+                letterSpacing: 0.6,
               ),
             ),
+          ),
+        ),
 
-            Positioned(
-              top: 16,
-              left: 16,
+        Center(
+          child: GestureDetector(
+            onTap: _togglePlayPause,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 180),
+              opacity: _showPlayIcon ? 1 : 0,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 11,
-                  vertical: 7,
-                ),
+                width: 78,
+                height: 78,
                 decoration: BoxDecoration(
-                  color: Colors.greenAccent.withOpacity(0.14),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Colors.greenAccent.withOpacity(0.45),
-                  ),
+                  color: Colors.black.withOpacity(0.38),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white30),
                 ),
-                child: const Text(
-                  'OPEN TO WORK',
+                child: const Icon(
+                  Icons.play_arrow_rounded,
+                  color: Colors.white,
+                  size: 54,
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        Positioned(
+          left: 20,
+          right: 20,
+          bottom: 24,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 7),
+              if (title.trim().isNotEmpty)
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.greenAccent,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 11,
-                    letterSpacing: 0.5,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white.withOpacity(0.84),
                   ),
                 ),
-              ),
-            ),
-
-            Center(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(999),
-                onTap: onOpenVideo,
-                child: Container(
-                  width: 76,
-                  height: 76,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.42),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white30),
-                  ),
-                  child: const Icon(
-                    Icons.play_arrow_rounded,
-                    color: Colors.white,
-                    size: 52,
+              if (city.trim().isNotEmpty) ...[
+                const SizedBox(height: 7),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.location_on_outlined,
+                      color: Colors.white.withOpacity(0.74),
+                      size: 19,
+                    ),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: Text(
+                        city,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.74),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (bio.trim().isNotEmpty) ...[
+                const SizedBox(height: 13),
+                Text(
+                  bio,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.82),
+                    fontSize: 14,
+                    height: 1.35,
                   ),
                 ),
-              ),
-            ),
-
-            Positioned(
-              left: 20,
-              right: 20,
-              bottom: 22,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              ],
+              if (skills.isNotEmpty) ...[
+                const SizedBox(height: 13),
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: skills.take(5).map((skill) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blueAccent.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: Colors.blueAccent.withOpacity(0.45),
+                        ),
+                      ),
+                      child: Text(
+                        skill,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+              const SizedBox(height: 16),
+              Row(
                 children: [
-                  Text(
-                    displayName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: widget.onOpenProfile,
+                        icon: const Icon(Icons.person_search_outlined),
+                        label: const Text('Profil'),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 7),
-                  if (title.trim().isNotEmpty)
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white.withOpacity(0.82),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: OutlinedButton.icon(
+                        onPressed: cvUrl.trim().isNotEmpty
+                            ? widget.onOpenCv
+                            : null,
+                        icon: const Icon(Icons.picture_as_pdf_outlined),
+                        label: const Text('CV PDF'),
                       ),
                     ),
-                  if (city.trim().isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          color: Colors.white.withOpacity(0.72),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 5),
-                        Expanded(
-                          child: Text(
-                            city,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.72),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  if (bio.trim().isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      bio,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.80),
-                        fontSize: 13,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                  if (skills.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 7,
-                      runSpacing: 7,
-                      children: skills.take(5).map((skill) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blueAccent.withOpacity(0.18),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: Colors.blueAccent.withOpacity(0.45),
-                            ),
-                          ),
-                          child: Text(
-                            skill,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 50,
-                          child: ElevatedButton.icon(
-                            onPressed: onOpenVideo,
-                            icon: const Icon(Icons.play_circle_outline),
-                            label: const Text('Vidéo'),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: SizedBox(
-                          height: 50,
-                          child: OutlinedButton.icon(
-                            onPressed: onOpenProfile,
-                            icon: const Icon(Icons.person_search_outlined),
-                            label: const Text('Profil'),
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool get _showPlayIcon {
+    final controller = _controller;
+
+    if (!_isInitialized || controller == null) return true;
+
+    return !controller.value.isPlaying;
+  }
+
+  Widget _buildVideoBackground() {
+    if (_hasError) {
+      return Container(
+        color: const Color(0xFF020713),
+        child: const Center(
+          child: Text(
+            'Impossible de lire cette vidéo.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white70,
+              fontWeight: FontWeight.bold,
             ),
+          ),
+        ),
+      );
+    }
+
+    if (!_isInitialized || _controller == null) {
+      final thumbnailUrl =
+          widget.talent['videoCvThumbnailUrl']?.toString() ?? '';
+
+      if (thumbnailUrl.trim().isNotEmpty) {
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              thumbnailUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) {
+                return Container(color: const Color(0xFF020713));
+              },
+            ),
+            Container(color: Colors.black.withOpacity(0.35)),
+            const Center(child: CircularProgressIndicator()),
           ],
+        );
+      }
+
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final controller = _controller!;
+
+    return GestureDetector(
+      onTap: _togglePlayPause,
+      child: FittedBox(
+        fit: BoxFit.cover,
+        child: SizedBox(
+          width: controller.value.size.width,
+          height: controller.value.size.height,
+          child: VideoPlayer(controller),
         ),
       ),
     );
@@ -354,15 +522,10 @@ class TalentProfileDetailsPage extends StatelessWidget {
 
   const TalentProfileDetailsPage({super.key, required this.talent});
 
-  Future<void> _openCv(BuildContext context) async {
+  Future<void> _openCv() async {
     final cvUrl = talent['cvUrl']?.toString() ?? '';
 
-    if (cvUrl.trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('CV PDF non disponible.')));
-      return;
-    }
+    if (cvUrl.trim().isEmpty) return;
 
     await launchUrl(Uri.parse(cvUrl), mode: LaunchMode.externalApplication);
   }
@@ -452,7 +615,7 @@ class TalentProfileDetailsPage extends StatelessWidget {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton.icon(
-                    onPressed: hasCv ? () => _openCv(context) : null,
+                    onPressed: hasCv ? _openCv : null,
                     icon: const Icon(Icons.picture_as_pdf),
                     label: Text(
                       hasCv
@@ -595,48 +758,61 @@ class _TalentDetailCard extends StatelessWidget {
   }
 }
 
-class _TalentsInfoState extends StatelessWidget {
+class _TalentsEmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
   final String message;
+  final VoidCallback onBack;
 
-  const _TalentsInfoState({
+  const _TalentsEmptyState({
     required this.icon,
     required this.title,
     required this.message,
+    required this.onBack,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: const Color(0xFF161D2E),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: Colors.white38, size: 54),
-          const SizedBox(height: 18),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+    return Stack(
+      children: [
+        Positioned(
+          top: 8,
+          left: 8,
+          child: IconButton(
+            onPressed: onBack,
+            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
           ),
-          const SizedBox(height: 9),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.62),
-              height: 1.38,
+        ),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.all(26),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: Colors.white38, size: 58),
+                const SizedBox(height: 18),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 23,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 9),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.62),
+                    height: 1.38,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
