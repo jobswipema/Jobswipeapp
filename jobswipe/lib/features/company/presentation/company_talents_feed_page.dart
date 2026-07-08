@@ -12,6 +12,8 @@ class CompanyTalentsFeedPage extends StatefulWidget {
 
 class _CompanyTalentsFeedPageState extends State<CompanyTalentsFeedPage> {
   int _currentIndex = 0;
+  bool _isSearching = false;
+  String _searchQuery = '';
 
   Stream<List<Map<String, dynamic>>> _talentsStream() {
     return FirebaseFirestore.instance
@@ -38,6 +40,31 @@ class _CompanyTalentsFeedPageState extends State<CompanyTalentsFeedPage> {
 
           return talents;
         });
+  }
+
+  List<Map<String, dynamic>> _filterTalents(
+    List<Map<String, dynamic>> talents,
+  ) {
+    final query = _searchQuery.trim().toLowerCase();
+
+    if (query.isEmpty) return talents;
+
+    return talents.where((talent) {
+      final displayName = talent['displayName']?.toString().toLowerCase() ?? '';
+      final title = talent['title']?.toString().toLowerCase() ?? '';
+      final city = talent['city']?.toString().toLowerCase() ?? '';
+      final bio = talent['bio']?.toString().toLowerCase() ?? '';
+
+      final skills = talent['skills'] is List
+          ? (talent['skills'] as List)
+                .map((skill) => skill.toString().toLowerCase())
+                .join(' ')
+          : talent['skills']?.toString().toLowerCase() ?? '';
+
+      final searchableText = [displayName, title, city, bio, skills].join(' ');
+
+      return searchableText.contains(query);
+    }).toList();
   }
 
   void _openTalentProfile(Map<String, dynamic> talent) {
@@ -77,9 +104,10 @@ class _CompanyTalentsFeedPageState extends State<CompanyTalentsFeedPage> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            final talents = snapshot.data!;
+            final allTalents = snapshot.data!;
+            final talents = _filterTalents(allTalents);
 
-            if (talents.isEmpty) {
+            if (allTalents.isEmpty) {
               return _TalentsEmptyState(
                 icon: Icons.video_library_outlined,
                 title: 'Aucun talent visible',
@@ -89,24 +117,185 @@ class _CompanyTalentsFeedPageState extends State<CompanyTalentsFeedPage> {
               );
             }
 
-            return PageView.builder(
-              scrollDirection: Axis.vertical,
-              itemCount: talents.length,
-              onPageChanged: (index) {
-                setState(() => _currentIndex = index);
-              },
-              itemBuilder: (context, index) {
-                final talent = talents[index];
+            if (talents.isEmpty) {
+              return Stack(
+                children: [
+                  _TalentsEmptyState(
+                    icon: Icons.search_off_outlined,
+                    title: 'Aucun talent trouvé',
+                    message: 'Aucun candidat ne correspond à votre recherche.',
+                    onBack: () {
+                      setState(() {
+                        _isSearching = false;
+                        _searchQuery = '';
+                      });
+                    },
+                  ),
+                  _TalentSearchOverlay(
+                    isSearching: _isSearching,
+                    searchQuery: _searchQuery,
+                    onOpenSearch: () {
+                      setState(() => _isSearching = true);
+                    },
+                    onCloseSearch: () {
+                      setState(() {
+                        _isSearching = false;
+                        _searchQuery = '';
+                      });
+                    },
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                        _currentIndex = 0;
+                      });
+                    },
+                  ),
+                ],
+              );
+            }
 
-                return _TalentVideoSlide(
-                  talent: talent,
-                  isActive: index == _currentIndex,
-                  onOpenProfile: () => _openTalentProfile(talent),
-                  onOpenCv: () => _openCv(talent),
-                );
-              },
+            return Stack(
+              children: [
+                PageView.builder(
+                  scrollDirection: Axis.vertical,
+                  itemCount: talents.length,
+                  onPageChanged: (index) {
+                    setState(() => _currentIndex = index);
+                  },
+                  itemBuilder: (context, index) {
+                    final talent = talents[index];
+
+                    return _TalentVideoSlide(
+                      talent: talent,
+                      isActive: index == _currentIndex,
+                      onOpenProfile: () => _openTalentProfile(talent),
+                      onOpenCv: () => _openCv(talent),
+                    );
+                  },
+                ),
+                _TalentSearchOverlay(
+                  isSearching: _isSearching,
+                  searchQuery: _searchQuery,
+                  onOpenSearch: () {
+                    setState(() => _isSearching = true);
+                  },
+                  onCloseSearch: () {
+                    setState(() {
+                      _isSearching = false;
+                      _searchQuery = '';
+                      _currentIndex = 0;
+                    });
+                  },
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                      _currentIndex = 0;
+                    });
+                  },
+                ),
+              ],
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+class _TalentSearchOverlay extends StatefulWidget {
+  final bool isSearching;
+  final String searchQuery;
+  final VoidCallback onOpenSearch;
+  final VoidCallback onCloseSearch;
+  final ValueChanged<String> onChanged;
+
+  const _TalentSearchOverlay({
+    required this.isSearching,
+    required this.searchQuery,
+    required this.onOpenSearch,
+    required this.onCloseSearch,
+    required this.onChanged,
+  });
+
+  @override
+  State<_TalentSearchOverlay> createState() => _TalentSearchOverlayState();
+}
+
+class _TalentSearchOverlayState extends State<_TalentSearchOverlay> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.searchQuery);
+  }
+
+  @override
+  void didUpdateWidget(covariant _TalentSearchOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.searchQuery != _controller.text) {
+      _controller.text = widget.searchQuery;
+      _controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: _controller.text.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.isSearching) {
+      return Positioned(
+        top: 8,
+        right: 58,
+        child: IconButton(
+          onPressed: widget.onOpenSearch,
+          icon: const Icon(Icons.search, color: Colors.white, size: 30),
+        ),
+      );
+    }
+
+    return Positioned(
+      top: 10,
+      left: 58,
+      right: 16,
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF101827).withOpacity(0.92),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.search, color: Colors.white70, size: 22),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                autofocus: true,
+                onChanged: widget.onChanged,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: 'Rechercher talent, ville, compétence...',
+                  hintStyle: TextStyle(color: Colors.white54),
+                  border: InputBorder.none,
+                  isDense: true,
+                ),
+              ),
+            ),
+            IconButton(
+              onPressed: widget.onCloseSearch,
+              icon: const Icon(Icons.close, color: Colors.white70),
+            ),
+          ],
         ),
       ),
     );
