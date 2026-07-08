@@ -92,8 +92,8 @@ class ApplicationsService {
 
     final candidateCvUrl = candidateData['cvUrl']?.toString() ?? '';
     final candidateCvFileName = candidateData['cvFileName']?.toString() ?? '';
-
-    await _firestore.collection('applications').add({
+    final applicationId = '${job.id}_${user.uid}';
+    await _firestore.collection('applications').doc(applicationId).set({
       'jobId': job.id,
       'candidateId': user.uid,
       'candidateName': candidateName,

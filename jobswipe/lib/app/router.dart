@@ -15,9 +15,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     redirect: (context, state) {
-      final isAtSplash = state.matchedLocation == '/';
-      final isAtLogin = state.matchedLocation == '/login';
-      final isAtRegister = state.matchedLocation == '/register';
+      final location = state.matchedLocation;
+
+      final isAtSplash = location == '/';
+      final isAtLogin = location == '/login';
+      final isAtRegister = location == '/register';
 
       if (isAtSplash) {
         return '/login';
@@ -27,7 +29,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return (isAtLogin || isAtRegister) ? null : '/login';
       }
 
-      if (isAtLogin) {
+      if (isAtLogin || isAtRegister) {
         switch (user.role) {
           case UserRole.candidate:
             return '/feed';
@@ -35,6 +37,39 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             return '/company';
           case UserRole.admin:
             return '/admin';
+        }
+      }
+
+      if (location == '/admin' && user.role != UserRole.admin) {
+        switch (user.role) {
+          case UserRole.company:
+            return '/company';
+          case UserRole.candidate:
+            return '/feed';
+          case UserRole.admin:
+            return null;
+        }
+      }
+
+      if (location == '/company' && user.role != UserRole.company) {
+        switch (user.role) {
+          case UserRole.admin:
+            return '/admin';
+          case UserRole.candidate:
+            return '/feed';
+          case UserRole.company:
+            return null;
+        }
+      }
+
+      if (location == '/feed' && user.role != UserRole.candidate) {
+        switch (user.role) {
+          case UserRole.admin:
+            return '/admin';
+          case UserRole.company:
+            return '/company';
+          case UserRole.candidate:
+            return null;
         }
       }
 
