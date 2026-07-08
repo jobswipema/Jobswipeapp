@@ -8,6 +8,9 @@ class ApplicationModel {
   final String candidateEmail;
   final String candidateCvUrl;
   final String candidateCvFileName;
+  final String candidateVideoCvUrl;
+  final String candidateVideoCvFileName;
+  final String candidateVideoCvThumbnailUrl;
   final String companyId;
   final String companyName;
   final String jobTitle;
@@ -31,6 +34,9 @@ class ApplicationModel {
     required this.candidateEmail,
     required this.candidateCvUrl,
     required this.candidateCvFileName,
+    required this.candidateVideoCvUrl,
+    required this.candidateVideoCvFileName,
+    required this.candidateVideoCvThumbnailUrl,
     required this.companyId,
     required this.companyName,
     required this.jobTitle,
@@ -58,6 +64,11 @@ class ApplicationModel {
       candidateEmail: data['candidateEmail']?.toString() ?? '',
       candidateCvUrl: data['candidateCvUrl']?.toString() ?? '',
       candidateCvFileName: data['candidateCvFileName']?.toString() ?? '',
+      candidateVideoCvUrl: data['candidateVideoCvUrl']?.toString() ?? '',
+      candidateVideoCvFileName:
+          data['candidateVideoCvFileName']?.toString() ?? '',
+      candidateVideoCvThumbnailUrl:
+          data['candidateVideoCvThumbnailUrl']?.toString() ?? '',
       companyId: data['companyId']?.toString() ?? '',
       companyName: data['companyName']?.toString() ?? '',
       jobTitle: data['jobTitle']?.toString() ?? '',
@@ -65,19 +76,14 @@ class ApplicationModel {
       createdAt: data['createdAt'] is Timestamp
           ? (data['createdAt'] as Timestamp).toDate()
           : null,
-      candidatePhone: data['candidatePhone'] ?? '',
-      candidateCity: data['candidateCity'] ?? '',
-      candidateBio: data['candidateBio'] ?? '',
-      candidateSkills: data['candidateSkills'] ?? '',
-
+      candidatePhone: data['candidatePhone']?.toString() ?? '',
+      candidateCity: data['candidateCity']?.toString() ?? '',
+      candidateBio: data['candidateBio']?.toString() ?? '',
+      candidateSkills: data['candidateSkills']?.toString() ?? '',
       submittedAt: (data['submittedAt'] as Timestamp?)?.toDate(),
-
       reviewingAt: (data['reviewingAt'] as Timestamp?)?.toDate(),
-
       interviewAt: (data['interviewAt'] as Timestamp?)?.toDate(),
-
       acceptedAt: (data['acceptedAt'] as Timestamp?)?.toDate(),
-
       rejectedAt: (data['rejectedAt'] as Timestamp?)?.toDate(),
     );
   }

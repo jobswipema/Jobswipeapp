@@ -206,6 +206,10 @@ class _CompanyApplicationsPageState extends State<CompanyApplicationsPage> {
             'skills': application.candidateSkills,
             'candidateCvUrl': application.candidateCvUrl,
             'candidateCvFileName': application.candidateCvFileName,
+            'candidateVideoCvUrl': application.candidateVideoCvUrl,
+            'candidateVideoCvFileName': application.candidateVideoCvFileName,
+            'candidateVideoCvThumbnailUrl':
+                application.candidateVideoCvThumbnailUrl,
           },
         ),
       ),
@@ -267,6 +271,10 @@ class _CompanyApplicationsPageState extends State<CompanyApplicationsPage> {
             'skills': application.candidateSkills,
             'candidateCvUrl': application.candidateCvUrl,
             'candidateCvFileName': application.candidateCvFileName,
+            'candidateVideoCvUrl': application.candidateVideoCvUrl,
+            'candidateVideoCvFileName': application.candidateVideoCvFileName,
+            'candidateVideoCvThumbnailUrl':
+                application.candidateVideoCvThumbnailUrl,
           },
         ),
       ),

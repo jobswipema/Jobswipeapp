@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:jobswipe/features/company/presentation/schedule_interview_page.dart';
+import 'package:jobswipe/features/company/presentation/candidate_video_cv_player_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class CandidateDetailsPage extends StatelessWidget {
@@ -60,9 +61,13 @@ class CandidateDetailsPage extends StatelessWidget {
     }
   }
 
-  Future<void> _openVideoCv(BuildContext context, String url) async {
-    if (url.trim().isEmpty) {
-      await _showCandidateDetailsSheet(
+  void _openVideoCv(BuildContext context) {
+    final videoCvUrl = candidateData['candidateVideoCvUrl']?.toString() ?? '';
+    final videoCvThumbnailUrl =
+        candidateData['candidateVideoCvThumbnailUrl']?.toString() ?? '';
+
+    if (videoCvUrl.trim().isEmpty) {
+      _showCandidateDetailsSheet(
         context: context,
         icon: Icons.videocam_outlined,
         iconColor: Colors.amber,
@@ -72,20 +77,18 @@ class CandidateDetailsPage extends StatelessWidget {
       return;
     }
 
-    final launched = await launchUrl(
-      Uri.parse(url),
-      mode: LaunchMode.externalApplication,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CandidateVideoCvPlayerPage(
+          candidateName: candidateData['fullName']?.toString() ?? 'Candidat',
+          jobTitle: candidateData['jobTitle']?.toString() ?? '',
+          videoCvUrl: videoCvUrl,
+          videoCvThumbnailUrl: videoCvThumbnailUrl,
+          candidateBio: candidateData['bio']?.toString() ?? '',
+          candidateSkills: candidateData['skills']?.toString() ?? '',
+        ),
+      ),
     );
-
-    if (!launched && context.mounted) {
-      await _showCandidateDetailsSheet(
-        context: context,
-        icon: Icons.error_outline,
-        iconColor: Colors.redAccent,
-        title: 'Ouverture impossible',
-        message: 'Impossible d’ouvrir le CV vidéo du candidat.',
-      );
-    }
   }
 
   Future<void> _createStatusNotification({
@@ -340,7 +343,7 @@ class CandidateDetailsPage extends StatelessWidget {
                   videoCvUrl: videoCvUrl,
                   videoCvFileName: videoCvFileName,
                   videoCvThumbnailUrl: videoCvThumbnailUrl,
-                  onOpen: () => _openVideoCv(context, videoCvUrl),
+                  onOpen: () => _openVideoCv(context),
                 ),
               ),
 
