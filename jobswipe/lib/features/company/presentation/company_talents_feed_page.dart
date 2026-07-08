@@ -166,6 +166,7 @@ class _CompanyTalentsFeedPageState extends State<CompanyTalentsFeedPage> {
                     final talent = talents[index];
 
                     return _TalentVideoSlide(
+                      key: ValueKey('${talent['id']}_${talent['videoCvUrl']}'),
                       talent: talent,
                       isActive: index == _currentIndex,
                       onOpenProfile: () => _openTalentProfile(talent),
@@ -309,6 +310,7 @@ class _TalentVideoSlide extends StatefulWidget {
   final VoidCallback onOpenCv;
 
   const _TalentVideoSlide({
+    super.key,
     required this.talent,
     required this.isActive,
     required this.onOpenProfile,
@@ -362,8 +364,26 @@ class _TalentVideoSlideState extends State<_TalentVideoSlide> {
   }
 
   @override
+  @override
   void didUpdateWidget(covariant _TalentVideoSlide oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    final oldVideoUrl = oldWidget.talent['videoCvUrl']?.toString() ?? '';
+    final newVideoUrl = widget.talent['videoCvUrl']?.toString() ?? '';
+
+    if (oldVideoUrl != newVideoUrl) {
+      _controller?.dispose();
+      _controller = null;
+
+      setState(() {
+        _isInitialized = false;
+        _hasError = false;
+        _isMuted = false;
+      });
+
+      _initVideo();
+      return;
+    }
 
     final controller = _controller;
 
