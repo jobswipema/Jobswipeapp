@@ -261,6 +261,11 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
   Future<void> _toggleOpenToWork(bool value) async {
     final user = ref.read(authProvider);
 
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.id);
+    final talentRef = FirebaseFirestore.instance
+        .collection('talents')
+        .doc(user.id);
+
     try {
       final updateData = <String, dynamic>{
         'isOpenToWork': value,
@@ -271,10 +276,19 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
         updateData['isTalentVisible'] = false;
       }
 
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.id)
-          .update(updateData);
+      await userRef.update(updateData);
+
+      if (!value) {
+        final talentSnapshot = await talentRef.get();
+
+        if (talentSnapshot.exists) {
+          await talentRef.update({
+            'isOpenToWork': false,
+            'isVisible': false,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }
 
       if (!mounted) return;
 
@@ -301,11 +315,73 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
   Future<void> _toggleTalentVisibility(bool value) async {
     final user = ref.read(authProvider);
 
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.id);
+    final talentRef = FirebaseFirestore.instance
+        .collection('talents')
+        .doc(user.id);
+
     try {
-      await FirebaseFirestore.instance.collection('users').doc(user.id).update({
+      final userSnapshot = await userRef.get();
+      final data = userSnapshot.data() ?? {};
+
+      final isOpenToWork = data['isOpenToWork'] != false;
+      final videoCvUrl = data['videoCvUrl']?.toString() ?? '';
+      final videoCvFileName = data['videoCvFileName']?.toString() ?? '';
+      final videoCvThumbnailUrl = data['videoCvThumbnailUrl']?.toString() ?? '';
+
+      if (value && !isOpenToWork) {
+        await _showProfileSheet(
+          icon: Icons.work_off_outlined,
+          iconColor: Colors.amber,
+          title: 'Open to Work désactivé',
+          message:
+              'Activez Open to Work avant de rendre votre CV vidéo visible dans le feed talents.',
+        );
+        return;
+      }
+
+      if (value && videoCvUrl.trim().isEmpty) {
+        await _showProfileSheet(
+          icon: Icons.videocam_off_outlined,
+          iconColor: Colors.amber,
+          title: 'CV vidéo manquant',
+          message:
+              'Ajoutez d’abord un CV vidéo avant de rendre votre profil visible dans le feed talents.',
+        );
+        return;
+      }
+
+      await userRef.update({
         'isTalentVisible': value,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
+      if (value) {
+        await talentRef.set({
+          'candidateId': user.id,
+          'displayName': data['displayName']?.toString() ?? user.displayName,
+          'title': data['title']?.toString() ?? '',
+          'city': data['city']?.toString() ?? '',
+          'bio': data['bio']?.toString() ?? '',
+          'skills': data['skills'] is List ? data['skills'] : <String>[],
+          'videoCvUrl': videoCvUrl,
+          'videoCvFileName': videoCvFileName,
+          'videoCvThumbnailUrl': videoCvThumbnailUrl,
+          'hasVideoCv': true,
+          'isOpenToWork': true,
+          'isVisible': true,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } else {
+        final talentSnapshot = await talentRef.get();
+
+        if (talentSnapshot.exists) {
+          await talentRef.update({
+            'isVisible': false,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }
 
       if (!mounted) return;
 
@@ -314,8 +390,8 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
         iconColor: value ? Colors.greenAccent : Colors.amber,
         title: value ? 'Profil vidéo visible' : 'Profil vidéo masqué',
         message: value
-            ? 'Votre CV vidéo pourra être découvert par les entreprises dans le futur feed talents.'
-            : 'Votre CV vidéo ne sera pas affiché dans le futur feed talents des entreprises.',
+            ? 'Votre CV vidéo pourra être découvert par les entreprises dans le feed talents.'
+            : 'Votre CV vidéo ne sera pas affiché dans le feed talents des entreprises.',
       );
     } catch (e) {
       if (!mounted) return;

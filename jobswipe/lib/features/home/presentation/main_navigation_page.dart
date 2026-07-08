@@ -7,6 +7,7 @@ import 'package:jobswipe/features/profile/presentation/candidate_profile_page.da
 import 'package:jobswipe/shared/providers/auth_provider.dart';
 import 'package:jobswipe/features/search/presentation/search_page.dart';
 import 'package:jobswipe/features/notifications/presentation/notifications_page.dart';
+import 'package:jobswipe/features/company/presentation/company_talents_feed_page.dart';
 
 class MainNavigationPage extends ConsumerStatefulWidget {
   const MainNavigationPage({super.key});
@@ -56,7 +57,7 @@ class _MainNavigationPageState extends ConsumerState<MainNavigationPage> {
     if (role == UserRole.company) {
       return [
         const FeedPage(),
-        const SearchPage(),
+        const CompanyTalentsFeedPage(),
         _placeholderPage('Publier une offre'),
         const NotificationsPage(),
         _placeholderPage('Profil entreprise'),
@@ -75,7 +76,10 @@ class _MainNavigationPageState extends ConsumerState<MainNavigationPage> {
     if (role == UserRole.company) {
       return const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Accueil'),
-        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Recherche'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.video_library_outlined),
+          label: 'Talents',
+        ),
         BottomNavigationBarItem(icon: Icon(Icons.add_circle), label: 'Publier'),
         BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Messages'),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),

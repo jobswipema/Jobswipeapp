@@ -10,6 +10,7 @@ import 'package:jobswipe/shared/models/application_model.dart';
 import 'package:jobswipe/shared/models/job_offer.dart';
 import 'package:jobswipe/shared/providers/auth_provider.dart';
 import 'package:jobswipe/features/company/presentation/company_notifications_page.dart';
+import 'package:jobswipe/features/company/presentation/company_talents_feed_page.dart';
 
 class CompanyDashboardPage extends ConsumerStatefulWidget {
   const CompanyDashboardPage({super.key});
@@ -198,6 +199,8 @@ class _CompanyDashboardPageState extends ConsumerState<CompanyDashboardPage> {
                                   applications: applications,
                                 )
                               else if (_selectedTab == 2)
+                                const CompanyTalentsFeedPage()
+                              else if (_selectedTab == 3)
                                 const _InterviewsTab()
                               else
                                 _AnalyticsTab(
@@ -231,6 +234,7 @@ class _CompanyTabs extends StatelessWidget {
     final tabs = [
       (Icons.dashboard_outlined, 'Dashboard'),
       (Icons.work_outline, 'Offres'),
+      (Icons.video_library_outlined, 'Talents'),
       (Icons.event_available_outlined, 'Entretiens'),
       (Icons.analytics_outlined, 'Analytics'),
     ];
@@ -275,7 +279,7 @@ class _CompanyTabs extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 9,
                         fontWeight: isSelected
                             ? FontWeight.bold
                             : FontWeight.w500,
