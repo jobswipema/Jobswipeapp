@@ -19,6 +19,7 @@ class CandidateProfilePage extends ConsumerStatefulWidget {
 
 class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
   bool _isUploadingCv = false;
+  bool _isUploadingVideoCv = false;
   int _selectedTab = 0;
 
   int _calculateDisplayedCompletion({
@@ -178,6 +179,85 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
     }
   }
 
+  Future<void> _uploadVideoCv() async {
+    final user = ref.read(authProvider);
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['mp4', 'mov', 'm4v'],
+      withData: true,
+    );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.single;
+
+    if (file.bytes == null) {
+      await _showProfileSheet(
+        icon: Icons.videocam_outlined,
+        iconColor: Colors.amber,
+        title: 'Vidéo illisible',
+        message: 'Impossible de lire la vidéo sélectionnée.',
+      );
+      return;
+    }
+
+    if (file.size > 100 * 1024 * 1024) {
+      await _showProfileSheet(
+        icon: Icons.warning_amber_rounded,
+        iconColor: Colors.amber,
+        title: 'Vidéo trop volumineuse',
+        message: 'Le CV vidéo ne doit pas dépasser 100 Mo.',
+      );
+      return;
+    }
+
+    setState(() => _isUploadingVideoCv = true);
+
+    try {
+      final videoCvUrl = await CloudinaryService.uploadVideo(
+        fileBytes: file.bytes!,
+        fileName: file.name,
+        folder: 'jobswipe/video-cvs/${user.id}',
+      );
+
+      final thumbnailUrl = CloudinaryService.generateVideoThumbnailUrl(
+        videoCvUrl,
+      );
+
+      await FirebaseFirestore.instance.collection('users').doc(user.id).update({
+        'videoCvUrl': videoCvUrl,
+        'videoCvFileName': file.name,
+        'videoCvThumbnailUrl': thumbnailUrl,
+        'videoCvUpdatedAt': FieldValue.serverTimestamp(),
+        'hasVideoCv': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+
+      await _showProfileSheet(
+        icon: Icons.check_circle_outline,
+        iconColor: Colors.greenAccent,
+        title: 'CV vidéo ajouté',
+        message:
+            'Votre CV vidéo a été ajouté avec succès. Il sera transmis aux entreprises lorsque vous postulez.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      await _showProfileSheet(
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Erreur upload vidéo',
+        message:
+            'Une erreur est survenue lors du téléversement du CV vidéo : $e',
+      );
+    } finally {
+      if (mounted) setState(() => _isUploadingVideoCv = false);
+    }
+  }
+
   String _statusLabel(String status) {
     switch (status) {
       case 'reviewing':
@@ -255,6 +335,10 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
 
             final cvUrl = data['cvUrl']?.toString() ?? '';
             final cvFileName = data['cvFileName']?.toString() ?? '';
+            final videoCvUrl = data['videoCvUrl']?.toString() ?? '';
+            final videoCvFileName = data['videoCvFileName']?.toString() ?? '';
+            final videoCvThumbnailUrl =
+                data['videoCvThumbnailUrl']?.toString() ?? '';
             final rawProfileCompletionPercent =
                 (data['profileCompletionPercent'] is num)
                 ? (data['profileCompletionPercent'] as num).toInt()
@@ -326,8 +410,13 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
                           skills: skills,
                           cvUrl: cvUrl,
                           cvFileName: cvFileName,
+                          videoCvUrl: videoCvUrl,
+                          videoCvFileName: videoCvFileName,
+                          videoCvThumbnailUrl: videoCvThumbnailUrl,
                           isUploadingCv: _isUploadingCv,
+                          isUploadingVideoCv: _isUploadingVideoCv,
                           onUploadCv: _uploadCv,
+                          onUploadVideoCv: _uploadVideoCv,
                           onEditProfile: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
@@ -437,8 +526,13 @@ class _ProfileTabContent extends StatelessWidget {
   final List<String> skills;
   final String cvUrl;
   final String cvFileName;
+  final String videoCvUrl;
+  final String videoCvFileName;
+  final String videoCvThumbnailUrl;
   final bool isUploadingCv;
+  final bool isUploadingVideoCv;
   final VoidCallback onUploadCv;
+  final VoidCallback onUploadVideoCv;
   final VoidCallback onEditProfile;
 
   const _ProfileTabContent({
@@ -446,8 +540,13 @@ class _ProfileTabContent extends StatelessWidget {
     required this.skills,
     required this.cvUrl,
     required this.cvFileName,
+    required this.videoCvUrl,
+    required this.videoCvFileName,
+    required this.videoCvThumbnailUrl,
     required this.isUploadingCv,
+    required this.isUploadingVideoCv,
     required this.onUploadCv,
+    required this.onUploadVideoCv,
     required this.onEditProfile,
   });
 
@@ -468,6 +567,14 @@ class _ProfileTabContent extends StatelessWidget {
           cvFileName: cvFileName,
           isUploading: isUploadingCv,
           onUpload: onUploadCv,
+        ),
+        const SizedBox(height: 14),
+        _VideoCvCard(
+          videoCvUrl: videoCvUrl,
+          videoCvFileName: videoCvFileName,
+          videoCvThumbnailUrl: videoCvThumbnailUrl,
+          isUploading: isUploadingVideoCv,
+          onUpload: onUploadVideoCv,
         ),
         const SizedBox(height: 14),
         _BioCard(bio: bio),
@@ -1224,6 +1331,107 @@ class _CvCard extends StatelessWidget {
                     : hasCv
                     ? 'Remplacer mon CV'
                     : 'Téléverser mon CV',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VideoCvCard extends StatelessWidget {
+  final String videoCvUrl;
+  final String videoCvFileName;
+  final String videoCvThumbnailUrl;
+  final bool isUploading;
+  final VoidCallback onUpload;
+
+  const _VideoCvCard({
+    required this.videoCvUrl,
+    required this.videoCvFileName,
+    required this.videoCvThumbnailUrl,
+    required this.isUploading,
+    required this.onUpload,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasVideoCv = videoCvUrl.trim().isNotEmpty;
+
+    return _SectionCard(
+      title: 'CV vidéo',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasVideoCv && videoCvThumbnailUrl.trim().isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: Image.network(
+                      videoCvThumbnailUrl,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) {
+                        return Container(
+                          color: const Color(0xFF0F1626),
+                          child: const Center(
+                            child: Icon(
+                              Icons.play_circle_outline,
+                              size: 48,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.45),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white30),
+                    ),
+                    child: const Icon(
+                      Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 38,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
+          Text(
+            hasVideoCv
+                ? 'CV vidéo chargé : ${videoCvFileName.isEmpty ? 'video-cv.mp4' : videoCvFileName}'
+                : 'Ajoutez une vidéo de présentation de 3 minutes maximum : parcours académique, expérience, ambitions et vision de carrière.',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.75),
+              fontSize: 15,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: isUploading ? null : onUpload,
+              icon: const Icon(Icons.video_call_outlined),
+              label: Text(
+                isUploading
+                    ? 'Téléversement...'
+                    : hasVideoCv
+                    ? 'Remplacer mon CV vidéo'
+                    : 'Téléverser mon CV vidéo',
               ),
             ),
           ),
