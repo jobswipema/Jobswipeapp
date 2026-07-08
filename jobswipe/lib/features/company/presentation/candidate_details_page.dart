@@ -60,6 +60,34 @@ class CandidateDetailsPage extends StatelessWidget {
     }
   }
 
+  Future<void> _openVideoCv(BuildContext context, String url) async {
+    if (url.trim().isEmpty) {
+      await _showCandidateDetailsSheet(
+        context: context,
+        icon: Icons.videocam_outlined,
+        iconColor: Colors.amber,
+        title: 'CV vidéo non disponible',
+        message: 'Aucun CV vidéo n’est associé à cette candidature.',
+      );
+      return;
+    }
+
+    final launched = await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!launched && context.mounted) {
+      await _showCandidateDetailsSheet(
+        context: context,
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Ouverture impossible',
+        message: 'Impossible d’ouvrir le CV vidéo du candidat.',
+      );
+    }
+  }
+
   Future<void> _createStatusNotification({
     required String candidateId,
     required String jobTitle,
@@ -209,6 +237,11 @@ class CandidateDetailsPage extends StatelessWidget {
     final skills = candidateData['skills']?.toString() ?? '';
     final cvUrl = candidateData['candidateCvUrl']?.toString() ?? '';
     final cvFileName = candidateData['candidateCvFileName']?.toString() ?? '';
+    final videoCvUrl = candidateData['candidateVideoCvUrl']?.toString() ?? '';
+    final videoCvFileName =
+        candidateData['candidateVideoCvFileName']?.toString() ?? '';
+    final videoCvThumbnailUrl =
+        candidateData['candidateVideoCvThumbnailUrl']?.toString() ?? '';
 
     final displayName = fullName.trim().isEmpty ? 'Candidat' : fullName.trim();
     final firstLetter = displayName.isNotEmpty
@@ -296,6 +329,18 @@ class CandidateDetailsPage extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+              _SectionCard(
+                title: 'CV vidéo candidat',
+                icon: Icons.video_library_outlined,
+                child: _VideoCvPreviewCard(
+                  videoCvUrl: videoCvUrl,
+                  videoCvFileName: videoCvFileName,
+                  videoCvThumbnailUrl: videoCvThumbnailUrl,
+                  onOpen: () => _openVideoCv(context, videoCvUrl),
                 ),
               ),
 
@@ -609,6 +654,96 @@ class _TextBlock extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _VideoCvPreviewCard extends StatelessWidget {
+  final String videoCvUrl;
+  final String videoCvFileName;
+  final String videoCvThumbnailUrl;
+  final VoidCallback onOpen;
+
+  const _VideoCvPreviewCard({
+    required this.videoCvUrl,
+    required this.videoCvFileName,
+    required this.videoCvThumbnailUrl,
+    required this.onOpen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasVideoCv = videoCvUrl.trim().isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (hasVideoCv && videoCvThumbnailUrl.trim().isNotEmpty) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: Image.network(
+                    videoCvThumbnailUrl,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) {
+                      return Container(
+                        color: const Color(0xFF0F1626),
+                        child: const Center(
+                          child: Icon(
+                            Icons.play_circle_outline,
+                            color: Colors.white70,
+                            size: 46,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.45),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white30),
+                  ),
+                  child: const Icon(
+                    Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 38,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
+        Text(
+          hasVideoCv
+              ? 'CV vidéo chargé : ${videoCvFileName.trim().isNotEmpty ? videoCvFileName : 'video-cv.mp4'}'
+              : 'Ce candidat n’a pas ajouté de CV vidéo.',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.72),
+            height: 1.35,
+            fontSize: 15,
+          ),
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: ElevatedButton.icon(
+            onPressed: hasVideoCv ? onOpen : null,
+            icon: const Icon(Icons.play_circle_outline),
+            label: const Text('Voir le CV vidéo'),
+          ),
+        ),
+      ],
     );
   }
 }
