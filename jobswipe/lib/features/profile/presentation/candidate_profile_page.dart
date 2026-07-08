@@ -258,6 +258,37 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
     }
   }
 
+  Future<void> _toggleTalentVisibility(bool value) async {
+    final user = ref.read(authProvider);
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.id).update({
+        'isTalentVisible': value,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+
+      await _showProfileSheet(
+        icon: value ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+        iconColor: value ? Colors.greenAccent : Colors.amber,
+        title: value ? 'Profil vidéo visible' : 'Profil vidéo masqué',
+        message: value
+            ? 'Votre CV vidéo pourra être découvert par les entreprises dans le futur feed talents.'
+            : 'Votre CV vidéo ne sera pas affiché dans le futur feed talents des entreprises.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      await _showProfileSheet(
+        icon: Icons.error_outline,
+        iconColor: Colors.redAccent,
+        title: 'Modification impossible',
+        message: 'Impossible de modifier la visibilité du CV vidéo : $e',
+      );
+    }
+  }
+
   String _statusLabel(String status) {
     switch (status) {
       case 'reviewing':
@@ -339,6 +370,7 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
             final videoCvFileName = data['videoCvFileName']?.toString() ?? '';
             final videoCvThumbnailUrl =
                 data['videoCvThumbnailUrl']?.toString() ?? '';
+            final isTalentVisible = data['isTalentVisible'] == true;
             final rawProfileCompletionPercent =
                 (data['profileCompletionPercent'] is num)
                 ? (data['profileCompletionPercent'] as num).toInt()
@@ -413,10 +445,12 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
                           videoCvUrl: videoCvUrl,
                           videoCvFileName: videoCvFileName,
                           videoCvThumbnailUrl: videoCvThumbnailUrl,
+                          isTalentVisible: isTalentVisible,
                           isUploadingCv: _isUploadingCv,
                           isUploadingVideoCv: _isUploadingVideoCv,
                           onUploadCv: _uploadCv,
                           onUploadVideoCv: _uploadVideoCv,
+                          onTalentVisibilityChanged: _toggleTalentVisibility,
                           onEditProfile: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
@@ -529,10 +563,12 @@ class _ProfileTabContent extends StatelessWidget {
   final String videoCvUrl;
   final String videoCvFileName;
   final String videoCvThumbnailUrl;
+  final bool isTalentVisible;
   final bool isUploadingCv;
   final bool isUploadingVideoCv;
   final VoidCallback onUploadCv;
   final VoidCallback onUploadVideoCv;
+  final ValueChanged<bool> onTalentVisibilityChanged;
   final VoidCallback onEditProfile;
 
   const _ProfileTabContent({
@@ -543,10 +579,12 @@ class _ProfileTabContent extends StatelessWidget {
     required this.videoCvUrl,
     required this.videoCvFileName,
     required this.videoCvThumbnailUrl,
+    required this.isTalentVisible,
     required this.isUploadingCv,
     required this.isUploadingVideoCv,
     required this.onUploadCv,
     required this.onUploadVideoCv,
+    required this.onTalentVisibilityChanged,
     required this.onEditProfile,
   });
 
@@ -573,8 +611,10 @@ class _ProfileTabContent extends StatelessWidget {
           videoCvUrl: videoCvUrl,
           videoCvFileName: videoCvFileName,
           videoCvThumbnailUrl: videoCvThumbnailUrl,
+          isTalentVisible: isTalentVisible,
           isUploading: isUploadingVideoCv,
           onUpload: onUploadVideoCv,
+          onTalentVisibilityChanged: onTalentVisibilityChanged,
         ),
         const SizedBox(height: 14),
         _BioCard(bio: bio),
@@ -1344,15 +1384,19 @@ class _VideoCvCard extends StatelessWidget {
   final String videoCvUrl;
   final String videoCvFileName;
   final String videoCvThumbnailUrl;
+  final bool isTalentVisible;
   final bool isUploading;
   final VoidCallback onUpload;
+  final ValueChanged<bool> onTalentVisibilityChanged;
 
   const _VideoCvCard({
     required this.videoCvUrl,
     required this.videoCvFileName,
     required this.videoCvThumbnailUrl,
+    required this.isTalentVisible,
     required this.isUploading,
     required this.onUpload,
+    required this.onTalentVisibilityChanged,
   });
 
   @override
@@ -1433,6 +1477,69 @@ class _VideoCvCard extends StatelessWidget {
                     ? 'Remplacer mon CV vidéo'
                     : 'Téléverser mon CV vidéo',
               ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F1626),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: hasVideoCv
+                    ? Colors.blueAccent.withOpacity(0.35)
+                    : Colors.white10,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: hasVideoCv
+                        ? Colors.blueAccent.withOpacity(0.15)
+                        : Colors.white.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    isTalentVisible
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    color: hasVideoCv ? Colors.blueAccent : Colors.white38,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Visible dans le feed talents',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        hasVideoCv
+                            ? 'Autoriser les entreprises à découvrir votre CV vidéo.'
+                            : 'Ajoutez d’abord un CV vidéo pour activer cette option.',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.58),
+                          fontSize: 12,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: hasVideoCv && isTalentVisible,
+                  onChanged: hasVideoCv ? onTalentVisibilityChanged : null,
+                ),
+              ],
             ),
           ),
         ],
