@@ -92,6 +92,11 @@ class ApplicationsService {
 
     final candidateCvUrl = candidateData['cvUrl']?.toString() ?? '';
     final candidateCvFileName = candidateData['cvFileName']?.toString() ?? '';
+    final candidateVideoCvUrl = candidateData['videoCvUrl']?.toString() ?? '';
+    final candidateVideoCvFileName =
+        candidateData['videoCvFileName']?.toString() ?? '';
+    final candidateVideoCvThumbnailUrl =
+        candidateData['videoCvThumbnailUrl']?.toString() ?? '';
     final applicationId = '${job.id}_${user.uid}';
     await _firestore.collection('applications').doc(applicationId).set({
       'jobId': job.id,
@@ -100,6 +105,9 @@ class ApplicationsService {
       'candidateEmail': candidateEmail,
       'candidateCvUrl': candidateCvUrl,
       'candidateCvFileName': candidateCvFileName,
+      'candidateVideoCvUrl': candidateVideoCvUrl,
+      'candidateVideoCvFileName': candidateVideoCvFileName,
+      'candidateVideoCvThumbnailUrl': candidateVideoCvThumbnailUrl,
       'candidatePhone': candidateData['phone']?.toString() ?? '',
       'candidateCity': candidateData['city']?.toString() ?? '',
       'candidateBio': candidateData['bio']?.toString() ?? '',
