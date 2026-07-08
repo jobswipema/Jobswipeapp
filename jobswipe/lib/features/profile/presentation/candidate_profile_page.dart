@@ -367,6 +367,8 @@ class _CandidateProfilePageState extends ConsumerState<CandidateProfilePage> {
           'videoCvUrl': videoCvUrl,
           'videoCvFileName': videoCvFileName,
           'videoCvThumbnailUrl': videoCvThumbnailUrl,
+          'cvUrl': data['cvUrl']?.toString() ?? '',
+          'cvFileName': data['cvFileName']?.toString() ?? '',
           'hasVideoCv': true,
           'isOpenToWork': true,
           'isVisible': true,
